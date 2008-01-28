@@ -1,0 +1,128 @@
+HTML::WikiConverter::DokuWikiFCK version 0.07
+
+This package includes DokuWikiFCK.pm, a perl extension to DokuWik.pm
+and fckg a plugin which supports the new syntax created by DokuWikiFCK.pm.
+fckg includes a slightly altered version the fckw plugin, which is needed
+for DokuWikiFCK.pm and both fckw and fckg cannot both  
+
+This is the first CPAN-based version.  Susbsequent versions will indiciate
+what changes have been made and will specify what needs to be done to upgrade.
+
+
+1. INSTALLATION
+
+a. FIRST-TIME INSTALLATION
+  A first-time installation is best done using CPAN:
+
+    perl -MCPAN -e 'install HTML::WikiConverter::DokuWikiFCK'
+    
+    This will install all of the Perl dependencies you need as well as
+    the fckg DokuWiki plugin. 
+   		
+    You should be prepared to provide the installer with the
+    full path to your DokuWiki plugins, for instance:
+
+             /var/www/html/dokuwiki/lib/plugins
+
+    The fckg plugin will then be installed in your plugins directory.
+    You will also be asked if you would like to replace the DokuWiki  
+    mediamanager with a revised version which is needed for the FCKeditor
+    The revised version is entirely compatible with DokuWiki. Your 
+    original DokuWiki mediamanager.php will be backed up.
+
+
+b. SUBSEQUENT OR MANUAL INSTALLATION
+    
+    The DokuWikiFCK package can be downloaded from CPAN at:
+
+          http://search.cpan.org/search?module=HTML::WikiConverter::DokuWikiFCK
+
+    To install, the standard instructions are:
+
+        gzip -dc  HTML-WikiConverter-DokuWikiFCK-0.07.tar.gz  | tar -xvf -
+               OR
+        tar -xzf HTML-WikiConverter-DokuWikiFCK-0.07.tar.gz
+
+        perl Makefile.PL
+        make
+        make test
+        make install
+  
+   
+If you have previously installed DokuWikiFCK, consult this README document.  If the only
+change is to DokuWikiFCK.pm, you can simply replace the old version of DokuWikiFCK.pm
+with this new one.  You should normally find it in the following perl5 directory:
+
+    usr/lib/perl5/site_perl/<perl_version>/HTML/WikiConverter
+
+
+c. A COMPLETELY MANUAL INSTALL
+
+DokuWikiFCK.pm subclasses DokuWiki.pm in order to give additional
+functionality to the FCK editor.  First, place DokuWikiFCK.pm in the perl5 directory,
+where DokuWiki.pm is installed. This should be: 
+    usr/lib/perl5/site_perl/<perl_version>/HTML/WikiConverter
+Then install the fckg plugin in the DokuWiki plugins directory.
+
+The following perl modules are required:
+	HTML::WikiConverter
+	HTML::WikiConverter::DokuWiki
+        HTML::WikiConverter::DokuWikiFCK (included in this package)
+
+
+2. SPACE-BAR POSITIONING
+
+The FCK Editor supports positioning of text and images using the Outdent, Indent,
+and Justification icons.  Justification is left, right, and center.  Outdent
+and Indent position elments at 40 pixel intervals. DokuWikiFCK has extended this
+functionality to enable positioning by use of the space-bar.  Space-bar positioning
+is on by default. It uses a place-holder character, which it substitutes
+for spaces. 
+
+To disable space-bar positioning, set the Perl variable $SPACEBAR_NUDGING to 1:
+  my $SPACEBAR_NUDGING = 1;
+This will be found at the top of the DokuWikiFCK.pm file.
+
+
+3. INSERTING AND UPLOADING IMAGES
+
+In the current version of fckw, the DokuWiki media manager is used for uploading files
+and the FCKEditor media manager is used for inserting files in the FCK editor's
+editing space.
+
+
+To implement inserting and uploading of images:
+	1.replace the copy of DokuWiki's mediamanager.php in tpl/<default> with 
+the one included in this package. 
+
+        2. create a userfiles directory in your doucment root directory.  Inside userfiles,
+create a symbolic link that points to the dokuwiki media directory:
+             userfiles
+                image -> <dokuwiki_directory>/data/media
+
+
+4. FCKEDITOR TOOLBAR
+
+The following FCKEditor Toolbar items are supported:
+
+FCKConfig.ToolbarSets["Dokuwiki"] = [   
+  ['Bold','Italic','Underline','StrikeThrough','-','Subscript','Superscript'],   
+  ['OrderedList','UnorderedList'],['Outdent','Indent'],   
+  ['JustifyCenter','JustifyLeft','JustifyRight'],
+  ['Table','Rule', 'Blockquote'], ['Smiley', 'SpecialChar'], [],  
+  ['Cut','Copy','Paste','PasteText' ],   
+  ['Undo','Redo','RemoveFormat', '-','Find'],   
+  '/',   
+  ['Style'],
+  ['TextColor','BGColor'],['FontFormat','FontName','FontSize'],   
+   ['Link','Unlink'], ['Image'],  
+  '/',
+  ['Source','-','About']   
+] ;  
+
+
+
+
+Myron Turner
+turnermm02@shaw.ca
+

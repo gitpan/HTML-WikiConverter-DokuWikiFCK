@@ -1,0 +1,6 @@
+Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
+
+0.01  Fri Jan 25 18:13:06 2008
+	- original version; created by h2xs 1.23 with options
+		-XA -n HTML::WikiConverter::DokuWikiFCK
+

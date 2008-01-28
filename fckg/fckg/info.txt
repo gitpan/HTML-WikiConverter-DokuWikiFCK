@@ -1,0 +1,8 @@
+# General Plugin Info do not edit
+
+author Pierre Spring
+email  pierre.spring@liip.ch
+date   2008-01-10
+name   FCKW Plugin
+desc   Use the open-source wysiwyg FCKEditor in a nondestructive way, maintaining wiki syntax.
+url    http://wiki.flux-cms.org/display/FCKW/
