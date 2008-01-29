@@ -20,7 +20,7 @@ use base 'HTML::WikiConverter::DokuWiki';
 use HTML::Element;
 use  HTML::Entities;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
   my $SPACEBAR_NUDGING = 1;
   my  $color_pattern = qr/
@@ -48,7 +48,7 @@ sub new {
         $nudge_char = ' ';
   }
   $self->{'_fh'} = 0;  # turn off debugging
- # $self->{'_fh'} = $self->getFH();  
+#  $self->{'_fh'} = $self->getFH();  
   
   return $self;
 }
@@ -556,7 +556,25 @@ sub _image {
     my($self, $node, $rules ) = @_;
 
    my $src = $node->attr('src') || '';
+
    return "" if(!$src);
+
+
+  my $w = $node->attr('width') || 0;
+  my $h = $node->attr('height') || 0;
+
+  if(!$w) {
+       $w = $node->attr('w') || 0;
+  }
+  if(!$h) {
+     $h = $node->attr('h') || 0;
+  }
+
+  if( $w and $h ) {
+    $src .= "?${w}x${h}";
+  } elsif( $w ) {
+    $src .= "?${w}";
+  }
 
    # an internal image, fetched from DokuWiki's image manager FCKeditor
    if($src !~ /userfiles\/image/) {
@@ -565,17 +583,23 @@ sub _image {
            return "{{$src}}";
    }
 
-   if($src) {
-       if($src =~ /editor\/images\/smiley\/msn/) {
-            if($src =~ /media=(http:.*?\.gif)/) {
-                  $src = $1;
-            }
-           else {
-                my $HOST = $self->base_uri;
-                $src = 'http://' . $HOST . $src if($src !~ /$HOST/);
-           }
-            return "{{$src}}";
+
+   if($src =~ /editor\/images\/smiley\/msn/) {
+        if($src =~ /media=(http:.*?\.gif)/) {
+              $src = $1;
+        }
+       else {
+            my $HOST = $self->base_uri;
+            $src = 'http://' . $HOST . $src if($src !~ /$HOST/);
        }
+
+        return "{{$src}}";
+   }
+  
+   if($src =~ s/^\/userfiles\/image\///) {
+        $src =~ s/\//:/g;   
+
+         return "{{$src}}"; 
    }
 
     my $img_url = $self->SUPER::_image($node, $rules);
@@ -598,7 +622,8 @@ sub _image {
        }
        $img_url = $elems[0] . 'media' . $last_el;
    }
-  
+
+
     return $img_url;
    
 }
@@ -811,7 +836,7 @@ sub _block {
 
                # squash runs of left aligns to one
            $$outref =~ s/([\n\s]*<align left>[\n\s]*<\/align>[\n\s]*){2,}/\n<align left><\/align>\n/gms;
-
+           $$outref =~ s/(<align left>[\n\s]*<\/align>\\\\[\n\s]*){2,}/\n<align left><\/align>\n/gms;
                                  # clean up lists
            if($self->{'list_output'}) {
               $$outref =~ s/([\*\-])(.*?)($EOL[\s\n]*)/$self->_format_list($1,$2, $3)/gmse; 

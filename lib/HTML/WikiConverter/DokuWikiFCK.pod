@@ -61,9 +61,9 @@ time and moving them backward with the delete key.
 
     The standard instructions for installing manually are:
 
-    gzip -dc  HTML-WikiConverter-DokuWikiFCK-0.07.tar.gz  | tar -xvf -
+    gzip -dc  HTML-WikiConverter-DokuWikiFCK-0.<nn>.tar.gz  | tar -xvf -
            OR
-    tar -xzf HTML-WikiConverter-DokuWikiFCK-0.07.tar.gz
+    tar -xzf HTML-WikiConverter-DokuWikiFCK-0.<nn>.tar.gz
 
     perl Makefile.PL
     make

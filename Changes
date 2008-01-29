@@ -7,3 +7,11 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
 0.08 Mon Jan 28 11:47:00 2008
        - removed 'use 5.00.08' from Makefile.PL, causing the make to fail with
          earlier versions of Perl       
+
+0.09 Tue Jan 29 07:56:41 2008	 
+      - fixed image urls so that they retain size info, which would be lost after re-saving
+        of files
+      - removed superfluous runs of  <align left> tags followed by DokuWiki line breaks, as in:
+           <align left>
+	   </align>\\
+	   

@@ -2,10 +2,16 @@ HTML::WikiConverter::DokuWikiFCK version 0.07
 
 This package includes DokuWikiFCK.pm, a perl extension to DokuWik.pm
 and fckg a plugin which supports the new syntax created by DokuWikiFCK.pm.
-fckg includes a slightly altered version the fckw plugin, which is needed
-for DokuWikiFCK.pm and both fckw and fckg cannot both  
+fckg includes a dedicated version of the fckw plugin, altered for use with 
+for DokuWikiFCK.pm. Both fckw and fckg cannot both be installed at the
+same time.  Similarly, if you have installed an earlier version of DokuWikiFCK
+with a 'styles' plugin, you cannot run the 'styles' plugin at the same
+time as fckg.  You can disable these plugins by making them unreadable and
+non executable:  
+            chmod a-rwx styles
+            chmod a-rwx fckw  
 
-This is the first CPAN-based version.  Susbsequent versions will indiciate
+This is the first CPAN-based version of DokuWikiFCK.  Susbsequent versions will indiciate
 what changes have been made and will specify what needs to be done to upgrade.
 
 
@@ -39,9 +45,9 @@ b. SUBSEQUENT OR MANUAL INSTALLATION
 
     To install, the standard instructions are:
 
-        gzip -dc  HTML-WikiConverter-DokuWikiFCK-0.07.tar.gz  | tar -xvf -
+        gzip -dc  HTML-WikiConverter-DokuWikiFCK-0.<nn>.tar.gz  | tar -xvf -
                OR
-        tar -xzf HTML-WikiConverter-DokuWikiFCK-0.07.tar.gz
+        tar -xzf HTML-WikiConverter-DokuWikiFCK-0.<nn>.tar.gz
 
         perl Makefile.PL
         make
@@ -90,7 +96,6 @@ In the current version of fckw, the DokuWiki media manager is used for uploading
 and the FCKEditor media manager is used for inserting files in the FCK editor's
 editing space.
 
-
 To implement inserting and uploading of images:
 	1.replace the copy of DokuWiki's mediamanager.php in tpl/<default> with 
 the one included in this package. 
@@ -99,6 +104,30 @@ the one included in this package.
 create a symbolic link that points to the dokuwiki media directory:
              userfiles
                 image -> <dokuwiki_directory>/data/media
+
+
+4. USING THE MEDIA MANAGER IN MULTIPLE DOKUWIKI INSTALLATIONS
+If you are running more than one dokuwiki on your server,each using DokuWikiFCK, and if 
+each has its own media directory, you will have to create a 'userfiles' directory
+for each installation, and each 'userfiles' will need an 'image' link to
+its own media directory. The way to do this is as follows:
+
+  1. in each installation's 'lib/plugins/fckg/fckeditor' directory, create 'userfiles'
+  2. in each  'userfiles' create a link to its media directory
+  3. go to fckg/fckeditor/editor/filemanager/connectors/php.config.php and in
+     config.php make the following edits:
+
+     ADD:
+     $UserFilesRealPath =  realpath(dirname(__FILE__)).'/../../../../userfiles/';
+
+     CHANGE:
+    // Path to user files relative to the document root.
+    //$Config['UserFilesPath'] =  '/userfiles/' ;
+      $Config['UserFilesPath'] = $UserFilesRealPath; 
+
+    //$Config['UserFilesAbsolutePath'] = ''
+      $Config['UserFilesAbsolutePath'] = $UserFilesRealPath;
+
 
 
 4. FCKEDITOR TOOLBAR
