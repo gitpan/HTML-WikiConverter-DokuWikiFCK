@@ -1,4 +1,3 @@
-use 5.008008;
 use ExtUtils::MakeMaker;
 use Term::ReadLine;
 use Cwd;
