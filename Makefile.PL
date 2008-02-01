@@ -1,5 +1,4 @@
 use ExtUtils::MakeMaker;
-use Term::ReadLine;
 use Cwd;
 
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
@@ -17,32 +16,29 @@ WriteMakefile(
 
 
 
-our $term = new Term::ReadLine 'DokuWik Plugins Directory';
-our $prompt= "Name of Directory: ";         
-our $OUT = $term->OUT || \*STDOUT;
 
 sub getDWPluginsDir {
 my $tpl = shift;            
 
-         while ( defined ($_ = $term->readline($prompt)) ) {
-           print $OUT $dwplugins, "\n";
+         while ( 1 ) {
+           print "Directory Name: "; 
+           $_ = <STDIN>;          
+           chomp;
            last if (/^$/ || /^\n$/m || /^\s+$/m);
-           if(-d $_ || $tpl) {
-              return $_;
+           if(-d $_ ) {
+              return $_;             
            }            
            else {
              print "\n$_ is not accessible. Try again? Or press Return to abort.\n"
-                  . "You can then install fckg.tgz manually\n";
+                  . "You can then install $tpl manually\n";
            }
          }
 
       return 0;
 }
 
+sub openMsg {
 
-END {
-
-my $pwd = cwd();
 my $HOME = $ENV{'HOME'};
 print qq(\n------------------
   I need the (absolute) pathname to your DokuWiki plugins directory,
@@ -61,7 +57,17 @@ print qq(\n------------------
 \n----------\n
 );
 
-my $dwplugins =  getDWPluginsDir(0);
+}
+
+openMsg();
+
+END {
+
+
+
+my $pwd = cwd();
+
+my $dwplugins =  getDWPluginsDir('fckg.tgz');
 
 if($dwplugins) {
   my @args = ("cp", "fckg/fckg.tgz", $dwplugins);
@@ -85,7 +91,12 @@ if($dwplugins) {
               default
     We will then install the new medimanager in lib/tpl/default.     
     );   
-   my $tpl_dir =  getDWPluginsDir(1);
+   my $tpl_dir =  getDWPluginsDir('mediamanager.php');
+   if(!$tpl_dir) {
+      print "\nYou will have to copy the new mediamanger.php\n"
+            ."to the template directory\n";
+      exit; 
+   }
    my $mediamanager = $pwd .'/fckg/mediamanager.php' ;
 
    $dwplugins =~ s/\/plugins.*//;
@@ -96,8 +107,9 @@ if($dwplugins) {
    rename ('mediamanager.php', 'mediamanager.php' . '.' . $$);
    @args = ("cp", $mediamanager, $tpl_dir);
    if(system(@args) == 0) {
-         print "Copied new mediamanager to $tpl_dir\n";
+         print "\nCopied new mediamanager to $tpl_dir\n";
          print "Renamed original mediamanager: mediamanager.php.$$\n";
+         print "Now type:\n\t\tmake install\nat the command line\n";
      }
      else {
            print "Unable to copy new media manager to $tpl_dir\n";
@@ -115,7 +127,9 @@ else {
    print qq(\n
            Unable to install fckg.tgz.  Please copy
            fckg/fckg.tgz to your DokuWiki plugins directory and
-           unzip it.\n);
+           unzip it. Then install the updated mediamanager.php
+           to your template directory\n);
+
 }
 
          

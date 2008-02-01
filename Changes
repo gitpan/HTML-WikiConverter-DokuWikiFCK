@@ -14,4 +14,34 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
       - removed superfluous runs of  <align left> tags followed by DokuWiki line breaks, as in:
            <align left>
 	   </align>\\
-	   
+0.10 Thu Jan 31 2008
+        -Revised indent.php (in fckg/syntax) to compensate for what may be a bug in IE, where
+         it does not recognize the color attribute of the <indent> tag, so that the middle dots
+         are printed to the screen.  Now we use middle dots in DokuWikiFCK, but convert them to &nbsp;
+         in indent.php for putput to the screen.  The &nbsp; are converted back to middle dots for
+         saving to the DokuWiki file.
+
+	-Removed Term::ReadLine from Makefile.PL, after Perl Tests on freebsd reported 
+         failures. Used <STDIN> instead.
+
+        -Removed empty <indent> tags during postprocess (DokuWikiFCK.pm)
+
+        -Fixed image handling so that when image is fetched from root namespace a colon
+         is prepended to the file name:  {{:root_image.gif}}
+         Otherwise, when the image is accessed from a subdirectory of root, it is accessed
+         as though the image is in the media directory for that subdirectory and so not found 
+
+        -Fixed failure of FCKeditor fck_image.js to find namespace when openining DokuWiki
+        mediamanagr for uploading images.  Problem was with finding  'top' window.
+        Added to fckeditor/fckconfig.js:
+			FCK.getCurrentWikiNS = function () {
+			 var ns = "";
+			 if(top.getCurrentWikiNS) {
+			     ns = top.getCurrentWikiNS();
+			 }
+
+			  return ns;
+			}
+         top.getCurrentWikiNS is output by fckg/helper.php into main.php and returns 
+         the current namespace.  
+

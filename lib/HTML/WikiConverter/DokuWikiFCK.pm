@@ -20,7 +20,7 @@ use base 'HTML::WikiConverter::DokuWiki';
 use HTML::Element;
 use  HTML::Entities;
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
   my $SPACEBAR_NUDGING = 1;
   my  $color_pattern = qr/
@@ -47,14 +47,15 @@ sub new {
   if(!$self->{'do_nudge'}) {
         $nudge_char = ' ';
   }
-  $self->{'_fh'} = 0;  # turn off debugging
+
 #  $self->{'_fh'} = $self->getFH();  
-  
-  return $self;
+   $self->{'_fh'} = 0;  # turn off debugging  
+   return $self;
 }
 
 
 sub getFH {
+  return 0;
 
   local *FH; 
   if(open(FH, ">> /var/tmp/fckw.log")) {
@@ -552,6 +553,15 @@ sub _p_alignment {
 }
 
 
+sub _dwimage_markup {
+  my ($self, $src) = @_;
+  $src =~ s/\//:/g;   
+  if($src !~ /:/) {
+      return "{{:$src}}";
+  }
+   return "{{$src}}";
+}
+
 sub _image { 
     my($self, $node, $rules ) = @_;
 
@@ -580,7 +590,7 @@ sub _image {
    if($src !~ /userfiles\/image/) {
           my @elems = split /=/, $src;
           $src = pop @elems; 
-           return "{{$src}}";
+         return $self->_dwimage_markup($src);
    }
 
 
@@ -597,11 +607,10 @@ sub _image {
    }
   
    if($src =~ s/^\/userfiles\/image\///) {
-        $src =~ s/\//:/g;   
-
-         return "{{$src}}"; 
+         return $self->_dwimage_markup($src);
    }
 
+    #  Fail-Safe mode, in case none of above work
     my $img_url = $self->SUPER::_image($node, $rules);
 
     $img_url =~ s/%25/%/g;
@@ -617,8 +626,7 @@ sub _image {
        my $dw_markup = $last_el;
             # try to convert image to standard DW markup
        if($dw_markup =~ s/^(.*?)userfiles\/image\///) {
-           $dw_markup =~ s/\//:/g;
-           return "{{$dw_markup}}";
+         return $self->_dwimage_markup($dw_markup);
        }
        $img_url = $elems[0] . 'media' . $last_el;
    }
@@ -847,6 +855,7 @@ sub _block {
                 # remove left align at end of file, if present
            $$outref =~ s/<align left>[\n\s]*<\/align>[\n\s]$//gms;                            
            
+           $$outref =~ s/<indent style=\"color:white"><\/indent>//gms;  # remove blank indents                          
 
                 #insert margin 0 at end of file, so that cursor returns to margin
            $$outref .= "\n<align 0px></align>\n" unless $$outref =~ /<align 0px><\/align>\s*$/;
