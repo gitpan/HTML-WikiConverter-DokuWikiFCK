@@ -20,7 +20,7 @@ use base 'HTML::WikiConverter::DokuWiki';
 use HTML::Element;
 use  HTML::Entities;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
   my $SPACEBAR_NUDGING = 1;
   my  $color_pattern = qr/

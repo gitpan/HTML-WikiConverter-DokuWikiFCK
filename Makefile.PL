@@ -19,13 +19,13 @@ WriteMakefile(
 
 sub getDWPluginsDir {
 my $tpl = shift;            
-
+my $exit_val = shift;
          while ( 1 ) {
            print "Directory Name: "; 
            $_ = <STDIN>;          
            chomp;
            last if (/^$/ || /^\n$/m || /^\s+$/m);
-           if(-d $_ ) {
+           if(-d $_ || $exit_val) {
               return $_;             
            }            
            else {
@@ -67,7 +67,7 @@ END {
 
 my $pwd = cwd();
 
-my $dwplugins =  getDWPluginsDir('fckg.tgz');
+my $dwplugins =  getDWPluginsDir('fckg.tgz',0);
 
 if($dwplugins) {
   my @args = ("cp", "fckg/fckg.tgz", $dwplugins);
@@ -91,7 +91,7 @@ if($dwplugins) {
               default
     We will then install the new medimanager in lib/tpl/default.     
     );   
-   my $tpl_dir =  getDWPluginsDir('mediamanager.php');
+   my $tpl_dir =  getDWPluginsDir('mediamanager.php',1);
    if(!$tpl_dir) {
       print "\nYou will have to copy the new mediamanger.php\n"
             ."to the template directory\n";
