@@ -45,3 +45,11 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
          top.getCurrentWikiNS is output by fckg/helper.php into main.php and returns 
          the current namespace.  
 
+0.12 Mon Feb 4 2008
+	 -Fixed image handling so that external (nad possibly internal) images (starting
+	  with http://) are handled output correctly.
+	 -Continued to work on indent feature.  There is a difference between FireFox and IE
+	  in the handlng of &nbsp; characters in the FCKeditor.  I believe this is now fixed
+	  so that &nbsp; characters in both browsers work the same.
+	   
+	   

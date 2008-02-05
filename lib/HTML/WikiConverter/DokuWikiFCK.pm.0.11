@@ -20,7 +20,7 @@ use base 'HTML::WikiConverter::DokuWiki';
 use HTML::Element;
 use  HTML::Entities;
 
-our $VERSION = '0.12';
+our $VERSION = '0.11';
 
   my $SPACEBAR_NUDGING = 1;
   my  $color_pattern = qr/
@@ -33,7 +33,6 @@ our $VERSION = '0.12';
   my %style_patterns = ( 'color' => \$color_pattern, 'font' => \$font_pattern );       
 
   my $nudge_char = '&#183;';
- 
   my $NL_marker = '~~~'; 
   my $EOL = '=~='; 
   
@@ -48,14 +47,15 @@ sub new {
   if(!$self->{'do_nudge'}) {
         $nudge_char = ' ';
   }
-  $self->{'_fh'} = 0;  # turn off debugging
+
 #  $self->{'_fh'} = $self->getFH();  
-  
-  return $self;
+   $self->{'_fh'} = 0;  # turn off debugging  
+   return $self;
 }
 
 
 sub getFH {
+  return 0;
 
   local *FH; 
   if(open(FH, ">> /var/tmp/fckw.log")) {
@@ -495,9 +495,9 @@ sub _p_alignment {
   if($self->{'do_nudge'}) {  
       $output =~ s/(?=<color\s+rgb.*?\/(rgb.*?)>)(.*?)(?=\<)/$self->_spaces_to_strikeout($2,$1)/gmse;
                     # covers insertion after previous processing
-                    # a later insertion of spaces must be preceded by a previous insertion character
+                    # a later insertion of spaces myst be preceded by a previous insertion character
                     # which means that a new insertion can't be made immediately after a non-insertion charater
-       $output =~ s/(\x{b7}|$nudge_char)([\s\x{a0}]+)/$1 . $self->_space_convert($2)/ge;
+     $output =~ s/(\x{b7}|$nudge_char)([\s\x{a0}]+)/$1 . $self->_space_convert($2)/ge;
   }
   if($self->{'strike_out'}) {
         $self->{'strike_out'} = 0;
@@ -568,7 +568,8 @@ sub _image {
    my $src = $node->attr('src') || '';
 
    return "" if(!$src);
-  
+
+
   my $w = $node->attr('width') || 0;
   my $h = $node->attr('height') || 0;
 
@@ -585,12 +586,11 @@ sub _image {
     $src .= "?${w}";
   }
 
-   # an internal image, fetched from DokuWiki's image manager FCKeditor, if not http://
+   # an internal image, fetched from DokuWiki's image manager FCKeditor
    if($src !~ /userfiles\/image/) {
           my @elems = split /=/, $src;
-         $src = pop @elems;          
-         return $self->_dwimage_markup($src) if($src !~ /^http:/);
-         return "{{$src}}";  # absolute url, possible external image 
+          $src = pop @elems; 
+         return $self->_dwimage_markup($src);
    }
 
 
@@ -730,6 +730,15 @@ sub _link {
     return $output;
 }
 
+sub _strike {
+    my($self, $node, $rules ) = @_;
+    my $text = $self->get_elem_contents($node) || "";
+   
+    $text = $self->_space_convert($text);     
+    $self->{'strike_out'} = 1;  
+
+    return "  <indent style='color:white'>$text</indent>  ";
+}
 
 sub _block {
   my($self, $node, $rules ) = @_;
@@ -780,19 +789,11 @@ sub _block {
 
   sub _space_convert {
      my( $self, $spaces ) = @_;
-     my $count = $spaces =~ s/[\s\x{a0}]{2}/$nudge_char/g;   
-     $spaces =~ s/[\s\x{a0}]//g;   
+     my $count = $spaces =~ s/[\s\x{a0}]/$nudge_char/g;   
 
      return $spaces;
   }
 
-  sub _other_convert {
-     my( $self, $spaces ) = @_;
-
-     my $count = $spaces =~ s/.{3}/$nudge_char/gms;   
-
-     return $spaces;
-  }
 
 
    sub  postprocess_output {
@@ -814,17 +815,20 @@ sub _block {
 
 
           if($self->{'do_nudge'}) {  
-              $$outref =~ s/(<indent.*?>)(.*?)(?=\<\/indent>)/ $1 . $self->_other_convert($2)/msge;           
               $$outref =~ s/(?<![${NL_marker}${nudge_char}\x{b7}])([\s\x{a0}]{3,})(?![${EOL}${nudge_char}\x{b7}])/"  <indent style='color:white'>" . $self->_space_convert($1)  . "<\/indent>\n  "/msge;           
               $$outref =~ s/~{3,}/\n<align left><\/align>/;
               $$outref =~ s/\|(.*?)<\/indent>\n(?=.*\|)/\|$1<\/indent>/mgs;
           }
-
-
                          # append align left to each newline, except where DokuWiki requires 
                          # a newline at the left-hand margin, immediately before its markup  
                          # these places are marked with the $NL_marker
          $$outref =~ s/(?<!\w\>)(?<!$NL_marker)\n(?!\<\W\w)/\n<align left><\/align> /gms; 
+
+                    # delete nudges of less than 2 characters, which usually result from extra
+                    # paragraphs inserted by FCK
+          if($self->{'do_nudge'}) {  
+               #  $$outref =~ s/<indent.*?>($nudge_char){1,2}<\/indent>//gms;            
+         }
 
                       # remove the newline marker
           $$outref =~ s/$NL_marker/\n/gms;
@@ -837,7 +841,6 @@ sub _block {
                # delete all 0 width aligns (which DokuWikiFCK inserts at end of file
                # to produce margin-width of 0 and return cursor to new line)
            $$outref =~ s/(<align 0px>[\n\s]*<\/align>[\n\s]*)+//gms;   
-           $$outref =~ s/(<align 1px>[\n\s]*<\/align>[\n\s]*)+//gms;   
 
                # squash runs of left aligns to one
            $$outref =~ s/([\n\s]*<align left>[\n\s]*<\/align>[\n\s]*){2,}/\n<align left><\/align>\n/gms;
