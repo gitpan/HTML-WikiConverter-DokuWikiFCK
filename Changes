@@ -52,4 +52,6 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
 	  in the handlng of &nbsp; characters in the FCKeditor.  I believe this is now fixed
 	  so that &nbsp; characters in both browsers work the same.
 	   
-	   
+0.13 Sat Feb 9 2008
+         -Added check-box to edit form to disable lock-timer by groups designated in Configuration Manager.
+          The default setting is ANY (i.e. anyone has permission).  
