@@ -20,7 +20,7 @@ use base 'HTML::WikiConverter::DokuWiki';
 use HTML::Element;
 use  HTML::Entities;
 
-our $VERSION = '0.13';
+our $VERSION = '0.17';
 
   my $SPACEBAR_NUDGING = 1;
   my  $color_pattern = qr/
@@ -49,7 +49,7 @@ sub new {
         $nudge_char = ' ';
   }
   $self->{'_fh'} = 0;  # turn off debugging
-#  $self->{'_fh'} = $self->getFH();  
+  #  $self->{'_fh'} = $self->getFH();  
   
   return $self;
 }
@@ -100,10 +100,27 @@ sub rules {
   for( 1..5 ) {
     $rules->{"h$_"} = { replace => \&_header };
   }
-  
+  $rules->{'plugin'} = { replace => \&_plugin };
   return $rules;
 }
 
+sub _plugin {
+  my($self, $node, $rules ) = @_;
+  my $text = $self->get_elem_contents($node);  # text is the plugin pattern
+
+  $text = $self->trim($text);
+  my $title = $node->attr('title');
+  $title=$self->trim($title);
+  if(!$title) {
+        return "";
+  }
+
+     # escape open and closing tag characters (here returned as html entities) in plugin patterns
+ $text =~ s/^((&lt;)+)/~$1~/g;
+ $text =~ s/((&gt;)+)$/~$1~/g;  
+
+  return '<plugin title="' . $title  .  '">' . "$text</plugin>";
+}
 
 sub _td_start {
   my($self, $node, $rules ) = @_;
@@ -382,13 +399,14 @@ sub _span_contents {
   my $text = $self->get_elem_contents($node);
   my $current_text = "";   # used where more than one span occurs in the markup retrieved as $text
  
-  if($text =~ /\s*^<(color|font).*?\/(color|font)/) {
+  if($text =~ /^\s*<(color|font).*?\/(color|font)/) {
        return $text;
    }
 
   elsif($text =~ /(.*?)<(color|font).*?\/(color|font)/) {       
           $current_text = $1;
           $text =~ s/^$current_text//;
+          $current_text =  $self->trim($current_text);
   }
   
  
@@ -406,9 +424,15 @@ sub _span_contents {
     if($current_text) {          
           $current_text = "<color $fg/$bg>$current_text</color>"; 
     }
-      $text = "<color $fg/$bg>$text</color>";
+      $text = "$current_text<color $fg/$bg>$text</color>";
 
     }
+
+
+ my $pat = qr/<color\s+rgb\(\d+, \d+, \d+\)\/rgb\(\d+, \d+, \d+\)>/;
+ $text =~ s/($pat)\s*$pat(.*?)<\/color>/$1$2/;
+
+
 
   
 
@@ -424,7 +448,7 @@ sub _span_contents {
     }
   }
 
-
+ 
   return $text;
 }
 
@@ -651,6 +675,15 @@ sub _indent {
        }
     }
     my $text = $self->_as_text($node);
+
+    if($color eq 'white') {
+        my %color_atts = $self->_get_type($node, ['color','background-color'], 'color');
+        if(%color_atts) {      
+           my $bg = (exists $color_atts{'background-color'}) ? ($color_atts{'background-color'}) : "";
+           $color=$bg, if $bg;         
+        }
+    }
+
     return "<indent style=\"color:$color\">$text</indent>";
 }
 
@@ -798,6 +831,7 @@ sub _block {
    sub  postprocess_output {
            my($self, $outref ) = @_;  
 
+
             $$outref =~ s/^\s+//;          # trim  
             $$outref =~ s/\s+$//;
             $$outref =~ s/\n{2,}/\n/g;     # multi
@@ -819,6 +853,9 @@ sub _block {
               $$outref =~ s/~{3,}/\n<align left><\/align>/;
               $$outref =~ s/\|(.*?)<\/indent>\n(?=.*\|)/\|$1<\/indent>/mgs;
           }
+
+          $$outref =~ s/<indent style="color:white">.?<\/indent>//msg;
+          $$outref =~ s/<indent style="color:white">.{2}<\/indent>//gms;
 
 
                          # append align left to each newline, except where DokuWiki requires 
@@ -852,8 +889,11 @@ sub _block {
                 # remove left align at end of file, if present
            $$outref =~ s/<align left>[\n\s]*<\/align>[\n\s]$//gms;                            
            
-           $$outref =~ s/<indent style=\"color:white"><\/indent>//gms;  # remove blank indents                          
-
+          if($self->{'do_nudge'}) {  
+               $$outref =~ s/<indent style=\"color:white"><\/indent>//gms;  # remove blank indents                          
+                              # remove white indents inserted into color indents
+               $$outref =~s/(<indent style=[\'\"]color:rgb\(\d+,\s*\d+,\s*\d+\)\;?[\'\"]>)[\s\n]*<\/indent>[\s\n]*<indent\s+style=\"color:white\">([${nudge_char}\x{b7}\x{a0}]+<\/indent>)/$1\n$2/gms;
+          }
                 #insert margin 0 at end of file, so that cursor returns to margin
            $$outref .= "\n<align 0px></align>\n" unless $$outref =~ /<align 0px><\/align>\s*$/;
 

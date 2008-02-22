@@ -55,3 +55,25 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
 0.13 Sat Feb 9 2008
          -Added check-box to edit form to disable lock-timer by groups designated in Configuration Manager.
           The default setting is ANY (i.e. anyone has permission).  
+
+0.15 Monday Feb 11 2008   
+	-Added action/cache and re-worked syntax/indent.php. Addresses inconsistencies between
+	 IE and Firefox in handling of space character (this is ongoing: see 0.10 and 0.12 above) 
+        -Added DokuWiki header styles to fckeditor/editor/css/fck_editorarea.css
+0.17 Thursday Feb 21 2008
+        -Added plugin tool to FCK toolbar, which allows user to select syntax text for syntax 
+         DokuWiki plugins so as to maintain their integrity -- keps them from disappearing, or
+         getting corrupted, or having any text permanently written to the DokuWiki text file.
+        -Added buttons which enable user to switch between DokuWiki Editor and FCKeditor and
+         gives user choice of whether to backup the FCK file (with its exteneded syntax) and to
+         start the DokuWiki editor with a clean file of the same name.
+         -Fixed bug in _span_contents() which accidentally deleted the beginning of the text contents
+          when more than one color tag was passed into the function's text node.
+        -Cleaned up some syntactical issues in DokuWikiFCK.pm:
+		1. additional code for the the _indent function, which now insures that
+            the entire parentage of indent tags is searched for background colors. 
+            This assists the FireFox FCKeditor problem where the indent characters
+            sometimes print as '?' or middle dots to the screen.
+	       2. code in postprocess_output() to removed duplicate unused indent tags
+               3. similar code in _span to handle color tags   
+       

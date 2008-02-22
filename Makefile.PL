@@ -75,6 +75,15 @@ if($dwplugins) {
      print "copied fckg/fckg.tgz to $dwplugins\n";
      print "Installing editor\n";
      chdir($dwplugins);
+     if( -d "fckg") {
+       my @args = ("mv", "fckg", "fckg.$$");   
+       if(system(@args) == 0) {
+         my $n = chmod(0000, "fckg.$$");
+         print "renamed old fckg to fckg.$$ and changed permisssion to 0000\n" if($n); 
+       }
+
+     }
+
      my @args = ("tar", "-xzf", "fckg.tgz");
 
      if(system(@args) == 0) {
@@ -90,11 +99,12 @@ if($dwplugins) {
     name of the directory where it is found, for instance:
               default
     We will then install the new medimanager in lib/tpl/default.     
+    If you have done this in an earlier install, just his return.
     );   
    my $tpl_dir =  getDWPluginsDir('mediamanager.php',1);
    if(!$tpl_dir) {
-      print "\nYou will have to copy the new mediamanger.php\n"
-            ."to the template directory\n";
+      print "\nPlease copy the new mediamanger.php\n"
+            ."to the template directory, if you have not done\nthis in an earlier install.\n";
       exit; 
    }
    my $mediamanager = $pwd .'/fckg/mediamanager.php' ;

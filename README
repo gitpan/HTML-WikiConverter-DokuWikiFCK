@@ -1,4 +1,4 @@
-HTML::WikiConverter::DokuWikiFCK version 0.07
+HTML::WikiConverter::DokuWikiFCK
 
 This package includes DokuWikiFCK.pm, a perl extension to DokuWik.pm
 and fckg a plugin which supports the new syntax created by DokuWikiFCK.pm.
@@ -10,9 +10,6 @@ time as fckg.  You can disable these plugins by making them unreadable and
 non executable:  
             chmod a-rwx styles
             chmod a-rwx fckw  
-
-This is the first CPAN-based version of DokuWikiFCK.  Susbsequent versions will indiciate
-what changes have been made and will specify what needs to be done to upgrade.
 
 
 1. INSTALLATION
@@ -82,8 +79,7 @@ The FCK Editor supports positioning of text and images using the Outdent, Indent
 and Justification icons.  Justification is left, right, and center.  Outdent
 and Indent position elments at 40 pixel intervals. DokuWikiFCK has extended this
 functionality to enable positioning by use of the space-bar.  Space-bar positioning
-is on by default. It uses a place-holder character, which it substitutes
-for spaces. 
+is on by default. 
 
 To disable space-bar positioning, set the Perl variable $SPACEBAR_NUDGING to 1:
   my $SPACEBAR_NUDGING = 1;
@@ -130,7 +126,7 @@ its own media directory. The way to do this is as follows:
 
 
 
-4. FCKEDITOR TOOLBAR
+5. FCKEDITOR TOOLBAR
 
 The following FCKEditor Toolbar items are supported:
 
@@ -150,6 +146,46 @@ FCKConfig.ToolbarSets["Dokuwiki"] = [
 ] ;  
 
 
+
+6.  LOCK TIME OUT
+The Editor Form has a checkbox which disables the lock timer.  This prevents the timeout alert
+from popping up every 15 minutes.  The Configuration Manager has a setting for the fckg plugin
+which enables the administrator to enter a comma separated list of groups which have permission
+to disable the lock timer.  The default setting is ANY, which means that any user can disable
+the lock timer.
+
+DokuWiki normally issues its time out warning after 15 minutes of keyboard
+inactivity.  But the FCKEditor interferes with this monitoring, so DokuWiki believes that
+there is no keyboard activity even when there is.  Because DokuWiki isn't able to detect
+keyboard activity, it doesn't make automatic backups, which it otherwise does after 
+every minute of keyboard activity.  This version of DokuWikiFCK makes automatic backups
+every three minutes when the user selects the chekbox that sets the lock timer to off. 
+
+7. DokuWiki SYNTAX PLUGIN SUPPORT
+There is a toolbar item which enables the user to buffer syntax plugin syntax, so that the
+syntax behavors correctly.  The toolbar icon is an electric plug.  Use the mouse to
+select the plugin's syntax and the click on the plugin icon.  A small dialog will appear
+asking for the name of the plugin.  Enter the name and click OK. DokuWikiFCK will 
+identify the plugin from its syntax;it uses the same code as DokuWiki uses to
+identify plugins.  DokuWikiFCK will use the name you give in the dialogue only as a
+last resort. 
+
+If you have  previously used the plugin tool to identify a plugin, you can remove the DokuWikiFCK
+identifying code by re-selecting the plugin syntax, clicking on the plugin tool,
+leaving the dialog box empty, and clicking OK.
+  
+
+8. EDITOR SUPPORT
+DokuWikiFCK now has a transparent facility for switching between the FCKeditor and the DokuWiki editor.
+There are always buttons on screen which enable the user to switch to the other editor.  When switching
+from the FCKeditor to the DokuWiki editor, you are given the option of backing up the FCK file and
+starting the DokuWiki session with a clean file of the same name.  The FCK file is saved to 
+numbered files with the format
+           filename_fck_<n>
+where <n> is the number of the backup file.
+
+This means that the user can choose which editor to use for a particular project.  One scenario
+might be to start with basic DokuWiki text editing and then switch to FCK for layout and design.
 
 
 Myron Turner
