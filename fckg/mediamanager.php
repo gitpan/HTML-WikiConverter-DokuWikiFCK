@@ -23,26 +23,94 @@
   <?php tpl_metaheaders()?>
   <link rel="shortcut icon" href="<?php echo DOKU_TPL?>images/favicon.ico" />
 
-<script language="javascript">
-if(!opener) {
-opener = new Object();
-opener.insertTags = function(edid,tagOpen, tagClose, sampleText) {
-        alert("Use GUI Image Manager to Insert Images");
-};
+  <script type="text/javascript" charset="utf-8" ><!--//--><![CDATA[//><!--
 
+        var UsingFCKImageManager = false;  
+        if(!opener || (opener && !opener.insertTags)) {
+            opener = new Object();
+            UsingFCKImageManager = true;
+            opener.focus = function() {};
+            opener.insertTags = function(edid,tagOpen, tagClose, sampleText) {
+                    alert("Use GUI Image Manager to Insert Images");
+            };
+	
+            window.onerror = function(msg,url, line) {
+               return true;
+            }
+            
+            function setupFCK(dom) {
+               setFCK_bgfg('media__manager');
+               setFCK_bgfg('media__left');
+               setFCK_bgfg('media__opts');
+               setFCK_bgfg('media__right');
+               setFCK_bgfg('media__content');
+               setFCK_bgfg('info_list_2');
+               setFCK_bgfg('info_list_1');
+               setFCK_bgfgDark('mselect_title');
+               setFCK_bgfgDark('media__ns');
+               setFCK_bgfg('img_on_file');
+               setFCK_bgfg('upload__name');
+               setFCK_bgfg('upload__file');
+               setFCK_bgfg('all');
 
-}
-window.onerror = function(msg,url, line) {
-   alert("Use GUI Image Manager to Insert Images");
-   return true;
-}
-</script>
+            }
+            function setFCK_bgfg(id) {
+               var dom =document.getElementById(id);               
+               dom.style.backgroundColor = "#F1F1E3";             
+               dom.style.color = "#737357";
+               dom.style.fontFamily = "arial,helvetica";
+            }
 
+            function setFCK_bgfgDark(id) {
+               var dom =document.getElementById(id);               
+               dom.style.backgroundColor = "#E3E3C7";             
+               dom.style.color = "#737357";
+               dom.style.fontFamily = "arial,helvetica";              
+            }
+
+        }
+        else {
+            var setupFCK = function(){ };            
+        }
+ 
+
+      function G_onsubmithandler() {
+          var filename = document.getElementById('upload__name').value;
+           if(!filename){
+	    alert("Please enter a file for uploading");
+	    return false;
+	   }
+           elems = filename.split(/\./);
+           ext = elems.pop();
+           if(!ext.match(/(jpeg|jpg|png|gif|bmp)/)) {
+              alert('filetype not supported: ' + ext);
+              return false;
+           }            
+	    setupFCK(document.getElementById('media__manager'));   
+            return true;	  
+      }
+
+      function Gmedia_onLoadHandler() {
+             document.forms[0].onsubmit = G_onsubmithandler;
+             var m_hide = document.getElementById('media__hide');
+             if(m_hide)  m_hide.click();    
+
+             var labels = document.getElementsByTagName('label');
+             for(var i=0; i< labels.length; i++) {
+                if(labels[i]['htmlFor'].match(/media__hide/i)) {
+                      labels[i].innerHTML = "Hide Thumbnails";
+                      break;  
+                }
+            }           
+           setupFCK(document.getElementById('media__manager'));   
+      }
+
+  //--><!]]></script>
 
 </head>
 
 
-<body>
+<body id= "all" onload = "Gmedia_onLoadHandler();" onreload=setupFCK();">
 <div id="media__manager" class="dokuwiki">
     <div id="media__left">
         <?php html_msgarea()?>

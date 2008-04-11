@@ -81,9 +81,17 @@ and Indent position elments at 40 pixel intervals. DokuWikiFCK has extended this
 functionality to enable positioning by use of the space-bar.  Space-bar positioning
 is on by default. 
 
-To disable space-bar positioning, set the Perl variable $SPACEBAR_NUDGING to 1:
-  my $SPACEBAR_NUDGING = 1;
+To disable space-bar positioning, set the Perl variable $SPACEBAR_NUDGING to 0:
+  my $SPACEBAR_NUDGING = 0;
 This will be found at the top of the DokuWikiFCK.pm file.
+
+In FireFox, when multiple space insertions have been made against a
+non-white background, one or more '?' or medial dots may appear in the
+space which has been opened up by the space-bar. These characters will
+also occur when changing from IE to FireFox for editing. These are
+temporary. They disappear when the the file is saved and the editor is
+exited. Even if they reappear in the FCK editor, they will not appear in
+the final page as displayed by the browser. 
 
 
 3. INSERTING AND UPLOADING IMAGES
@@ -96,7 +104,7 @@ To implement inserting and uploading of images:
 	1.replace the copy of DokuWiki's mediamanager.php in tpl/<default> with 
 the one included in this package. 
 
-        2. create a userfiles directory in your doucment root directory.  Inside userfiles,
+        2. create a userfiles directory in your document root directory.  Inside userfiles,
 create a symbolic link that points to the dokuwiki media directory:
              userfiles
                 image -> <dokuwiki_directory>/data/media
@@ -108,58 +116,69 @@ each has its own media directory, you will have to create a 'userfiles' director
 for each installation, and each 'userfiles' will need an 'image' link to
 its own media directory. The way to do this is as follows:
 
-  1. in each installation's 'lib/plugins/fckg/fckeditor' directory, create 'userfiles'
-  2. in each  'userfiles' create a link to its media directory
+  1. for each installation create a 'userfiles' directory
+  2. in each  'userfiles' create a link to the dockuwiki media directory
   3. go to fckg/fckeditor/editor/filemanager/connectors/php.config.php and in
      config.php make the following edits:
 
      ADD:
-     $UserFilesRealPath =  realpath(dirname(__FILE__)).'/../../../../userfiles/';
+     $UserFilesRealPath =  /absolute/path/to/userfiles/';
 
      CHANGE:
     // Path to user files relative to the document root.
     //$Config['UserFilesPath'] =  '/userfiles/' ;
-      $Config['UserFilesPath'] = $UserFilesRealPath; 
+      $Config['UserFilesPath'] =  '/server_document_root/<any_other_dirs/>userfiles/'; 
 
     //$Config['UserFilesAbsolutePath'] = ''
       $Config['UserFilesAbsolutePath'] = $UserFilesRealPath;
 
-
+  Example:
+    Your absolute path is:  /var/www/html/dw_1/userfiles
+    Your document root is:  /html/
+    
+        $UserFilesRealPath = '/var/www/html/dw_1/userfiles/';
+	$Config['UserFilesPath'] = '/html/dw_1/userfiles/';
+        $Config['UserFilesAbsolutePath'] = $UserFilesRealPath;
+  
+   The rest follows the instructions for a single userfiles directory in 3 above.  
 
 5. FCKEDITOR TOOLBAR
 
 The following FCKEditor Toolbar items are supported:
 
+
 FCKConfig.ToolbarSets["Dokuwiki"] = [   
   ['Bold','Italic','Underline','StrikeThrough','-','Subscript','Superscript'],   
-  ['OrderedList','UnorderedList'],['Outdent','Indent'],   
+  ['OrderedList','UnorderedList'],  ['Outdent','Indent'],   
   ['JustifyCenter','JustifyLeft','JustifyRight'],
   ['Table','Rule', 'Blockquote'], ['Smiley', 'SpecialChar'], [],  
-  ['Cut','Copy','Paste','PasteText' ],   
+  ['Cut','Copy','Paste','PasteText', 'PasteWord', 'SpellCheck' ],   
+  ['Style'], ['FontFormat','FontName','FontSize'], 
   ['Undo','Redo','RemoveFormat', '-','Find'],   
-  '/',   
-  ['Style'],
-  ['TextColor','BGColor'],['FontFormat','FontName','FontSize'],   
-   ['Link','Unlink'], ['Image'],  
-  '/',
-  ['Source','-','About']   
-] ;  
+  ['TextColor','BGColor', 'Abbr'],
+  ['Link','Unlink'], ['Image', 'Source'],   
+  ['About']   
 
+] ;
+
+The tool designated as 'Abbr' is the plugin tool.  It maintains the integrity of plugin syntax.
+   1. It escapes plugin syntax for plugins which use angle brackets, < and >, so that 
+the brackets will not be mistaken for HTML syntax.
+   2. It guarantees that plugin syntax which produces output will not be replaced by that
+output.     
+   3. It guarantees that javascript scripts needed for the plugins will be sent to
+the browser.      
 
 
 6.  LOCK TIME OUT
-The Editor Form has a checkbox which disables the lock timer.  This prevents the timeout alert
-from popping up every 15 minutes.  The Configuration Manager has a setting for the fckg plugin
-which enables the administrator to enter a comma separated list of groups which have permission
-to disable the lock timer.  The default setting is ANY, which means that any user can disable
-the lock timer.
 
 DokuWiki normally issues its time out warning after 15 minutes of keyboard
 inactivity.  But the FCKEditor interferes with this monitoring, so DokuWiki believes that
-there is no keyboard activity even when there is.  Because DokuWiki isn't able to detect
-keyboard activity, it doesn't make automatic backups, which it otherwise does after 
-every minute of keyboard activity.  This version of DokuWikiFCK makes automatic backups
-every three minutes when the user selects the chekbox that sets the lock timer to off. 
+there is no keyboard activity even when there is and so issues time out warnings.  
+DokuWikiFCK disables the lock timer and hence the warning pop-ups. The lock timer is
+tied into DokuWiki's automatic draft back-up system,but because DW is not aware of the
+FCKeditor, it can't back up its contents.  We hope to remedy this in a future 
+release.
 
 7. DokuWiki SYNTAX PLUGIN SUPPORT
 There is a toolbar item which enables the user to buffer syntax plugin syntax, so that the
@@ -173,16 +192,15 @@ last resort.
 If you have  previously used the plugin tool to identify a plugin, you can remove the DokuWikiFCK
 identifying code by re-selecting the plugin syntax, clicking on the plugin tool,
 leaving the dialog box empty, and clicking OK.
-  
+
+This technique does not always work with versions of PHP prior to version 5.  
 
 8. EDITOR SUPPORT
 DokuWikiFCK now has a transparent facility for switching between the FCKeditor and the DokuWiki editor.
 There are always buttons on screen which enable the user to switch to the other editor.  When switching
 from the FCKeditor to the DokuWiki editor, you are given the option of backing up the FCK file and
-starting the DokuWiki session with a clean file of the same name.  The FCK file is saved to 
-numbered files with the format
-           filename_fck_<n>
-where <n> is the number of the backup file.
+starting the DokuWiki session with a clean file of the same name. It is also possible to
+choose to convert the FCK syntax to native DokuWiki syntax.
 
 This means that the user can choose which editor to use for a particular project.  One scenario
 might be to start with basic DokuWiki text editing and then switch to FCK for layout and design.

@@ -20,7 +20,7 @@ use base 'HTML::WikiConverter::DokuWiki';
 use HTML::Element;
 use  HTML::Entities;
 
-our $VERSION = '0.17';
+our $VERSION = '0.20';
 
   my $SPACEBAR_NUDGING = 1;
   my  $color_pattern = qr/
@@ -36,6 +36,19 @@ our $VERSION = '0.17';
  
   my $NL_marker = '~~~'; 
   my $EOL = '=~='; 
+
+  my %_formats = ( 'b' => '**',
+                  'em' => '//',
+                  'u' => '__', 
+                  'ins' => '__'
+               );
+
+  my %_format_regex = ( 'b' => qr/\*\*/,
+                        'em' => qr/\/\//,
+                        'u' => qr/__/, 
+                        'ins' => qr/__/ 
+               );
+
   
 sub new {
   my $class = shift;
@@ -49,7 +62,7 @@ sub new {
         $nudge_char = ' ';
   }
   $self->{'_fh'} = 0;  # turn off debugging
-  #  $self->{'_fh'} = $self->getFH();  
+#  $self->{'_fh'} = $self->getFH();  
   
   return $self;
 }
@@ -71,6 +84,7 @@ sub rules {
  
   $rules->{ 'span' } = { replace => \&_span_contents };
   $rules->{ 'p' }  = {replace => \&_p_alignment };
+  $rules->{ 'div' }  = {replace => \&_p_alignment };
   $rules->{ 'img' }  = {replace => \&_image };
   $rules->{ 'a' } =   { replace => \&_link };
   $rules->{ 'blockquote' } = { replace => \&_block };
@@ -84,7 +98,6 @@ sub rules {
   $rules->{ 'code' } =  { replace => \&_code_types }; 
   $rules->{ 'kbd' } =   { replace => \&_typewriter }; 
   $rules->{ 'samp' } =  { replace => \&_code_types }; 
-  $rules->{ 'ins' } =   { alias => 'u' }; 
   $rules->{ 'q' }   =   { start => '"', end => '"' };  
   $rules->{ 'li' }   =  { line_format => 'multi', trim => 'leading', start => \&_li_start,
                          end => $EOL};
@@ -101,7 +114,31 @@ sub rules {
     $rules->{"h$_"} = { replace => \&_header };
   }
   $rules->{'plugin'} = { replace => \&_plugin };
+
+  $rules->{'ins'} = { replace => \&_formats };
+  $rules->{'b'} = { replace => \&_formats };
+  $rules->{'i'} = { replace => \&_formats };
+  $rules->{'u'} = { replace => \&_formats };
+
   return $rules;
+}
+
+
+#  handle bold, underline, italic, ins
+sub _formats {
+    my($self, $node, $rules ) = @_;
+
+    my $text = $self->get_elem_contents($node);
+
+    $text = $self->trim($text);
+    return "" if ! $text; 
+    return "" if $text !~ /[[\p{IsDigit}\p{IsAlpha}\p{IsXDigit}]/;
+
+    $text =~ s/^$_format_regex{$node->tag}//;
+    $text =~ s/$_format_regex{$node->tag}$//;
+
+    return $_formats{$node->tag} . $text . $_formats{$node->tag}; 
+     
 }
 
 sub _plugin {
@@ -109,6 +146,8 @@ sub _plugin {
   my $text = $self->get_elem_contents($node);  # text is the plugin pattern
 
   $text = $self->trim($text);
+  return "" if  !$text;
+
   my $title = $node->attr('title');
   $title=$self->trim($title);
   if(!$title) {
@@ -125,7 +164,7 @@ sub _plugin {
 sub _td_start {
   my($self, $node, $rules ) = @_;
     my $text = $self->get_elem_contents($node);
-
+    $self->{'in_table'} = 1;
  
     my $prefix =  $self->SUPER::_td_start($node, $rules); 
     my $atts =$self->_get_basic_attributes($node);
@@ -239,7 +278,7 @@ sub _extract_style_value {
    $value =~ s/^\s+//;
    $value =~ s/\s+$//;
 
-   return $value if $attribute eq $search_term;
+   return $value if $search_term &&  $attribute eq $search_term;
    return 0;
 }
 
@@ -398,21 +437,22 @@ sub _span_contents {
 
   my $text = $self->get_elem_contents($node);
   my $current_text = "";   # used where more than one span occurs in the markup retrieved as $text
- 
+
   if($text =~ /^\s*<(color|font).*?\/(color|font)/) {
        return $text;
    }
 
   elsif($text =~ /(.*?)<(color|font).*?\/(color|font)/) {       
           $current_text = $1;
-          $text =~ s/^$current_text//;
+          my $tmp = $current_text;
+          $tmp =~ s/([*\/\-'"{\[\]\(\)])/\\$1/gms;  # escape regex pattern characters
+          $text =~ s/^$tmp//;   
           $current_text =  $self->trim($current_text);
   }
   
  
   my %color_atts = $self->_get_type($node, ['color','background-color'], 'color');
   if(%color_atts) {  
-
     my $fg = (exists $color_atts{'color'}) ? ($color_atts{'color'}) : "";
     my $bg = (exists $color_atts{'background-color'}) ? ($color_atts{'background-color'}) : "";
 
@@ -424,16 +464,15 @@ sub _span_contents {
     if($current_text) {          
           $current_text = "<color $fg/$bg>$current_text</color>"; 
     }
-      $text = "$current_text<color $fg/$bg>$text</color>";
+    $text = "$current_text<color $fg/$bg>$text</color>";
+   }
 
-    }
-
+   elsif($current_text) {
+   
+   }
 
  my $pat = qr/<color\s+rgb\(\d+, \d+, \d+\)\/rgb\(\d+, \d+, \d+\)>/;
  $text =~ s/($pat)\s*$pat(.*?)<\/color>/$1$2/;
-
-
-
   
 
   my %font_atts = $self->_get_type($node, ['size', 'face'], 'font');
@@ -448,7 +487,10 @@ sub _span_contents {
     }
   }
 
- 
+  if(!%font_atts && !%color_atts && $current_text) {
+    $text = "$current_text$text";
+  }
+
   return $text;
 }
 
@@ -467,21 +509,22 @@ sub clean_text {
 sub _typewriter {
    my($self, $node, $rules ) = @_;
    my $text = $self->get_elem_contents($node) || ""; 
-    return "" if ! $text;
-    $text = $self->clean_text($text);     
-    return '<font _dummy_/AmerType Md BT,American Typewriter,courier New>' . $text . '</font>';
+
+   $text = $self->clean_text($text);     
+   $text= $self->trim($text);   
+   return "" if ! $text;
+   return '<font _dummy_/AmerType Md BT,American Typewriter,courier New>' . $text . '</font>';
 }
 
 sub _code_types {
     my($self, $node, $rules ) = @_;
     my $text = $self->get_elem_contents($node) || "";
 
-    return "" if ! $text;
-  
-    
-    my $style = $node->attr('style');  
-
     $text = $self->clean_text($text);     
+    $text= $self->trim($text);
+    return "" if ! $text;  
+    
+   # my $style = $node->attr('style');  
     
     return '<font _dummy_/courier New>' . $text . '</font>';
 
@@ -492,6 +535,7 @@ sub _code_types {
 sub _li_start {
   my($self, $node, $rules ) = @_;
   my $text = $self->get_elem_contents($node) || "";
+
   my $type = $self->SUPER::_li_start($node, $rules);
   $self->{'list_output'} = 1;  # signal postprocess_output to clean up lists
   return  "$NL_marker$type";
@@ -500,7 +544,19 @@ sub _li_start {
 sub _p_alignment {
   my($self, $node, $rules ) = @_;
   my $output = $self->get_elem_contents($node) || "";
- 
+
+ if($output =~ /^\s*[*\-]{1}\s+/gms) {
+      
+        $self->{'list_output'} = 1;
+        return "\n  $output$EOL"; 
+ }
+
+  if($output =~ /<align/gms || $output =~ /<\/align/gms || $output =~ /\{\{.*?\}\}/gms) {
+
+        return $output;
+  }
+
+
   if($node->parent) {
     my $tag = $node->parent->tag(); 
     if($tag eq 'td') { 
@@ -516,12 +572,13 @@ sub _p_alignment {
   if($self->{'do_nudge'}  &&  $output =~ /^\s{3,}/) {   
        $newline = "<align 1px></align>";
   }
-  if($self->{'do_nudge'}) {  
-      $output =~ s/(?=<color\s+rgb.*?\/(rgb.*?)>)(.*?)(?=\<)/$self->_spaces_to_strikeout($2,$1)/gmse;
+  if($self->{'do_nudge'}) {
+      $output =~ s/(?=<color\s+rgb.*?\/(rgb.*?)>)(.*?)(?=\<)/$self->_spaces_to_strikeout($2,$1)/gmse;    
                     # covers insertion after previous processing
                     # a later insertion of spaces must be preceded by a previous insertion character
                     # which means that a new insertion can't be made immediately after a non-insertion charater
-       $output =~ s/(\x{b7}|$nudge_char)([\s\x{a0}]+)/$1 . $self->_space_convert($2)/ge;
+
+      $output =~ s/(\x{b7}|$nudge_char)([\s\x{a0}]+)/$1 . $self->_space_convert($2)/gme;
   }
   if($self->{'strike_out'}) {
         $self->{'strike_out'} = 0;
@@ -560,7 +617,7 @@ sub _p_alignment {
      $output = "${align_tag}\n${output}\n</align>";
      $aligns_cnt--;     
      if($aligns_cnt) {
-       for(0...$aligns_cnt) {
+       for(1...$aligns_cnt) {
            $output .= " </align> ";
        }
      }
@@ -573,16 +630,42 @@ sub _p_alignment {
      $output=~s/http\:(?!\/\/)/http:\/\//gsm;
      $output =~ s/\/{3,}/\/\//g; # removes extra newline markers at start and end of images
 
+
+ if($output =~ s/<align left>[\x{a0}\x{b7}]+<\/align>/<align left><\/align>/gms) {
+      return $output;
+ }
+
+ $output =~ s/<align center>[\s\n\x{a0}\x{b7}]+<\/align>//gms; 
+ $output =~ s/<align right>[\s\n\x{a0}\x{b7}]+<\/align>//gms;
+ $output =~ s/<align \d+px>[\s\n\x{a0}\x{b7}]+<\/align>//gms;
+ return  "" if(!$output);
+
  return $newline . $output;
 }
 
 
 sub _dwimage_markup {
-  my ($self, $src) = @_;
+  my ($self, $src, $align) = @_;
+
   $src =~ s/\//:/g;   
   if($src !~ /:/) {
-      return "{{:$src}}";
+     $src = ":$src";
   }
+
+
+      if($align eq 'center') { 
+         return "\n<align center>\n{{ $src }}\n</align>\n";
+      }
+      if($align eq 'right') {
+       return "<align right>\n{{ $src}}</align>";
+      }
+      if($align eq 'left') {
+       return "<align left>\n{{$src }}</align>";
+      }
+      if($align =~ /\d+px/) {
+       return "<align $align>\n{{$src}}\n</align>";
+      }
+
    return "{{$src}}";
 }
 
@@ -592,7 +675,11 @@ sub _image {
    my $src = $node->attr('src') || '';
 
    return "" if(!$src);
-  
+
+  my $alignment = $self->_image_alignment($node);
+  if(!$alignment && $node->parent) {
+     $alignment = $self->_image_alignment($node->parent);
+  }
   my $w = $node->attr('width') || 0;
   my $h = $node->attr('height') || 0;
 
@@ -613,7 +700,7 @@ sub _image {
    if($src !~ /userfiles\/image/) {
           my @elems = split /=/, $src;
          $src = pop @elems;          
-         return $self->_dwimage_markup($src) if($src !~ /^http:/);
+         return $self->_dwimage_markup($src,$alignment) if($src !~ /^http:/);
          return "{{$src}}";  # absolute url, possible external image 
    }
 
@@ -629,9 +716,9 @@ sub _image {
 
         return "{{$src}}";
    }
-  
-   if($src =~ s/^\/userfiles\/image\///) {
-         return $self->_dwimage_markup($src);
+
+   if($src =~ s/^(.*?)\/userfiles\/image\///) {
+         return $self->_dwimage_markup($src,$alignment);
    }
 
     #  Fail-Safe mode, in case none of above work
@@ -650,7 +737,7 @@ sub _image {
        my $dw_markup = $last_el;
             # try to convert image to standard DW markup
        if($dw_markup =~ s/^(.*?)userfiles\/image\///) {
-         return $self->_dwimage_markup($dw_markup);
+         return $self->_dwimage_markup($dw_markup, $alignment);
        }
        $img_url = $elems[0] . 'media' . $last_el;
    }
@@ -660,11 +747,30 @@ sub _image {
    
 }
 
+sub _image_alignment {
+  my ($self, $node) = @_;
+  if($node->parent) {
+    my $p = $node->parent;
+    my %atts = $p->all_external_attr();
+    foreach my $at(keys %atts) {
 
+        if($at eq 'style') {
+           if($atts{$at} =~ /text-align:\s+(\w+)/) {
+                 return $1;
+           }
+           if($atts{$at} =~ /margin-left:\s+(\d+px)/) {
+                 return $1;
+           }
+        }
+     } 
+  }
+
+  return ""; 
+}
 
 sub _indent {
     my($self, $node, $rules ) = @_;     
-
+    
     my @list = $node->content_list();
     my $color = 'white';
 
@@ -674,6 +780,7 @@ sub _indent {
            last;
        }
     }
+
     my $text = $self->_as_text($node);
 
     if($color eq 'white') {
@@ -712,7 +819,7 @@ sub _link {
             # which is not necessary
             return $content;
         }
-        if ($url =~ /media=(.*)(&.*)?/) {
+        if ($url =~ /media=(.*)(&.*)?/) {	
             # this is a resource from the dokuwiki file repository
             return "{{" . $1 . "}}" if lc $1 eq lc $content;
             # dokuwiki does not evaluate markup within
@@ -723,7 +830,7 @@ sub _link {
     elsif ($url =~ /^\/lib\/exe\/detail.php\?/) {
         # this link is autogenerated by dokuwiki
         # for images from the repository
-        # so we can translate it's content and ignore the link
+        # so we can translate it's content and ignore the link	 
         my $content = $self->get_elem_contents($node);
         return $content;
     }
@@ -731,6 +838,29 @@ sub _link {
     my $output=$self->SUPER::_link($node, $rules);
 
     my $text = $self->get_elem_contents($node) || "";
+
+
+
+    my $left_alignment = "";   #actually any alignment, not just left
+    if($text =~ s/(\<align \d+px>)//) {
+      $left_alignment = $1;
+      $text =~ s/<\/align>//;
+      $output =~ s/\<align \d+px>//;
+      $output =~ s/<\/align>//;
+    }
+
+    elsif($text =~ s/(\<align \w+>)//) {
+      $left_alignment = $1;
+      $text =~ s/<\/align>//;
+      $output =~ s/\<align \w+>//;
+      $output =~ s/<\/align>//;
+
+    }
+
+   # blank links
+    if($text =~ /^\s*[\\]{2}s*/) { return ""; }
+    
+    
     my $emphasis = "";
     if($text =~ /([\*\/_\"])\1/) {
         $emphasis = "$1$1";
@@ -751,7 +881,6 @@ sub _link {
         if($text =~ /\W{2}(.*?)\W{2}/) {
             $text= $1;
         }
-
         $output =~ s/\|$start_pat.*?$end_pat/|$text/;
         $output = "$start${emphasis}${output}${emphasis}$end";  
     }
@@ -760,6 +889,11 @@ sub _link {
         $output =~ s/$pat//g;
         $output = "${emphasis}${output}${emphasis}";
     }
+
+ if($left_alignment) {
+    $output = "$left_alignment${output}</align>";
+ }
+
     return $output;
 }
 
@@ -785,6 +919,8 @@ sub _block {
                $bg = $1;
       }
   }
+
+   # blockquote width = 80%; blockquote padding = 25px;
    my $block = "<block 80:25>";
    if($bg) {
       $block = "<block 80:25:${bg}>";
@@ -792,8 +928,6 @@ sub _block {
      $text =~ s/^\s+//;          # trim  
      $text =~ s/\s+$//;
      $text =~ s/\n{2,}/\n/g;     # multi
-  
-
 
    return $block . $text . '</block>';
 
@@ -813,7 +947,7 @@ sub _block {
 
   sub _space_convert {
      my( $self, $spaces ) = @_;
-     my $count = $spaces =~ s/[\s\x{a0}]{2}/$nudge_char/g;   
+     my $count = $spaces =~ s/[\s\x{a0}]/$nudge_char/g;   
      $spaces =~ s/[\s\x{a0}]//g;   
 
      return $spaces;
@@ -823,15 +957,16 @@ sub _block {
      my( $self, $spaces ) = @_;
 
      my $count = $spaces =~ s/.{3}/$nudge_char/gms;   
-
+#     my $count = $spaces =~ s/./$nudge_char/gms;   
      return $spaces;
   }
 
 
    sub  postprocess_output {
            my($self, $outref ) = @_;  
-
-
+# my $parsed_html = $self->parsed_html;
+#$self->log($parsed_html);
+#$self->log("\npostprocess_output (1)",$$outref);
             $$outref =~ s/^\s+//;          # trim  
             $$outref =~ s/\s+$//;
             $$outref =~ s/\n{2,}/\n/g;     # multi
@@ -843,7 +978,7 @@ sub _block {
 
 
            $$outref =~ s/\^<align 0px><\/align>//g;           # remove aligns at top of file
-           $$outref =~ s/<align>[\s\n]*<\/align>[\s\n]*//gsm;      # remove empty aligns
+           $$outref =~ s/[\s\n]*<align>[\s\n]*<\/align>[\s\n]*//gsm;      # remove empty aligns
                                                                   
 
 
@@ -854,10 +989,7 @@ sub _block {
               $$outref =~ s/\|(.*?)<\/indent>\n(?=.*\|)/\|$1<\/indent>/mgs;
           }
 
-          $$outref =~ s/<indent style="color:white">.?<\/indent>//msg;
-          $$outref =~ s/<indent style="color:white">.{2}<\/indent>//gms;
-
-
+     
                          # append align left to each newline, except where DokuWiki requires 
                          # a newline at the left-hand margin, immediately before its markup  
                          # these places are marked with the $NL_marker
@@ -876,9 +1008,19 @@ sub _block {
            $$outref =~ s/(<align 0px>[\n\s]*<\/align>[\n\s]*)+//gms;   
            $$outref =~ s/(<align 1px>[\n\s]*<\/align>[\n\s]*)+//gms;   
 
-               # squash runs of left aligns to one
-           $$outref =~ s/([\n\s]*<align left>[\n\s]*<\/align>[\n\s]*){2,}/\n<align left><\/align>\n/gms;
-           $$outref =~ s/(<align left>[\n\s]*<\/align>\\\\[\n\s]*){2,}/\n<align left><\/align>\n/gms;
+           $$outref =~ s/\n[\\](2)s*/\n/gms;
+
+
+             $$outref =~ s/(?<=<align>)[\n\s]+(?=<\/align>)//gms;
+             $$outref =~ s/\n{3,}/\n/gms;           
+     
+             $$outref =~ s/<align left>[\n\s]+<\/align>[\\]{2}\s*//gms;
+             $$outref =~ s/([\s\n]*<align><\/align>[\s\n]*){2,}/<align><\/align>/gms;
+             $$outref =~ s/([\s\n]*<align center><\/align>[\s\n]*){2,}/<align center><\/align>/gms;
+             $$outref =~ s/([\s\n]*<align right><\/align>[\s\n]*){2,}/<align right><\/align>/gms;
+             $$outref =~ s/([\s\n]*<align left><\/align>[\s\n]*){2,}/<align left><\/align>/gms;
+
+
                                  # clean up lists
            if($self->{'list_output'}) {
               $$outref =~ s/([\*\-])(.*?)($EOL[\s\n]*)/$self->_format_list($1,$2, $3)/gmse; 
@@ -887,24 +1029,105 @@ sub _block {
           $$outref =~ s/(?!\n)<align left>/\n<align left>/gms;
 
                 # remove left align at end of file, if present
-           $$outref =~ s/<align left>[\n\s]*<\/align>[\n\s]$//gms;                            
-           
+          $$outref =~ s/<align left>[\n\s]*<\/align>[\n\s]$//gms;
+          $$outref =~ s/<font _dummy_\/courier New>\s*<\/font>//gms;
+
+          # Add DW markup to url's that have not been put into DW square brackets     
+          # check for italics, then for square brackets
+       $$outref =~ s/([\/]{2})*\s*(?<!\[\[)\s*(http:\/\/[\p{IsDigit}\p{IsAlpha}\p{IsXDigit};&?:.='"\/]{7,})(?!\|)/$self->_clean_url($2,$1)/egms;   
+
           if($self->{'do_nudge'}) {  
-               $$outref =~ s/<indent style=\"color:white"><\/indent>//gms;  # remove blank indents                          
+               $$outref =~ s/<indent style=[\'\"]color:white[\'\"]><\/indent>//gms;  # remove blank indents                          
+               $$outref =~ s/<indent style=['\"]color:white[\'\"]>(${nudge_char}){1,2}<\/indent>//msg;
+
                               # remove white indents inserted into color indents
                $$outref =~s/(<indent style=[\'\"]color:rgb\(\d+,\s*\d+,\s*\d+\)\;?[\'\"]>)[\s\n]*<\/indent>[\s\n]*<indent\s+style=\"color:white\">([${nudge_char}\x{b7}\x{a0}]+<\/indent>)/$1\n$2/gms;
+               $$outref =~s/(${nudge_char}|[\x{b7}\x{a0}])+<indent style=['\"]color:white[\'\"]>(${nudge_char}|[\n\s\x{b7}\x{a0}])*<\/indent>/$1$2/gms;
+
+               $$outref =~s/<indent style=['"]color:rgb\(.*?\)['"]><\/indent>//gms;
           }
+
+          $$outref =~s/$EOL//g;
+
+          $$outref =~ s/<code><\/code>//gms;
+   	      $$outref =~ s/<code>[\W]+<\/code>//gms;
+
+            # remove nested aligns
+           $$outref =~ s/<align \w+>[\n\s]*(<align \w+>.*?<\/align>[\n\s]*)<\/align>/$1/gms;
+
+            # remove left-over media cache links (?)
+            # may not be needed now that blank links are removed at line 821: [\\]{2}
+           # $$outref =~ s/\[\[http:.*?cache&media=.*?[\\]{2}.*?\]\]/\n/gms;
+           $self->del_xtra_c_aligns($$outref);
+            
+            if($self->{'in_table'}) {    # insure tables start with newline
+                $$outref =~ s/align>\s*\|/align>\n\|/gms; 
+            }
                 #insert margin 0 at end of file, so that cursor returns to margin
            $$outref .= "\n<align 0px></align>\n" unless $$outref =~ /<align 0px><\/align>\s*$/;
 
+           
                 # add a left aligned paragraph to make it easier to begin adding text
                 # otherwise sometimes cursor gets stuck at previous margin indent
                 # this works in conjuntion with the margin 0 above
            $$outref .= "\n<align left></align>\n";
-
+# $self->log("\npostprocess_output (last)",$$outref);
 
          }
 
+
+
+sub del_xtra_c_aligns {
+my ($self, $text) = @_;
+
+    my @left = $text=~ /(<align)/gs;
+    my @right = $text=~ /(<\/align)/gms;
+
+
+    if(scalar @right > scalar @left) {
+       my $oCount = 0;
+       my $cCount = 0;
+
+       # $self->log('del_xtra_c_aligns Left (1)', scalar(@left));
+       # $self->log('del_xtra_c_aligns Right (1) ', scalar(@right));
+
+       $text =~ s/((<align \w+>)|(<\/align>))/$self->fix_aligns($1, \$oCount, \$cCount)/egms;
+       # $self->log('del_xtra_c_aligns Open count', $oCount);
+       # $self->log('del_xtra_c_aligns Close count', $cCount);
+    }
+}
+
+
+sub fix_aligns {
+  my ($self, $align, $open, $close) = @_;
+  $$close++ if $align =~ /<\/align/;
+  $$open++ if  $align =~ /<align \w+>/;
+
+  if ($$close > $$open) {
+       $$close--;
+      return "" 
+  }
+
+  return $align;
+}
+
+
+# called by postprocess_output()
+# removes DW text markup from start and end of url
+# so that they don't occur inside the brackets, e.g. [[**. . . **]]
+# then retuns native DW url markup
+sub _clean_url {
+  my($self,$url, $markup) = @_;
+ my $italics="";
+ if($markup =~ /\//) {
+   $italics='//';;
+ }
+
+  $url =~ s/^[^h]+//ms;
+  $url =~ s/['"\/*_]{2,}$//ms;
+
+  return $italics .'[[' . $url  . ']]' . $italics;
+}
 
 # called by postprocess_output()
 sub _format_list {
@@ -917,7 +1140,7 @@ sub _format_list {
     pos($text) = 0;
 
       # We search for list item, making sure we don't mistake HR, Dokuwiki's ----, for an ol->li
-    while($text =~ /(.*?)(?<!\-\-\-)(?=[\*\-]\s+.*?$EOL)/gms) {
+    while($text =~ /(.*?)(?<!\-\-\-)(?=\s+[\*\-]\s+.*?$EOL)/gms) {
             $prefix .= $1;
             $p = pos($text);
     }
@@ -1048,7 +1271,6 @@ sub __get_text {
         return $output;
     }
 }
-
 
 
 1;
