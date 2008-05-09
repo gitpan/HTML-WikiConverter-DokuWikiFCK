@@ -127,17 +127,18 @@ its own media directory. The way to do this is as follows:
      CHANGE:
     // Path to user files relative to the document root.
     //$Config['UserFilesPath'] =  '/userfiles/' ;
-      $Config['UserFilesPath'] =  '/server_document_root/<any_other_dirs/>userfiles/'; 
-
+      $Config['UserFilesPath'] =  '/<path/to/>userfiles/'; 
+      NOTE:  'path/to/' does not include the document root directory itself.  See example below.
+     
     //$Config['UserFilesAbsolutePath'] = ''
       $Config['UserFilesAbsolutePath'] = $UserFilesRealPath;
-
+     
   Example:
     Your absolute path is:  /var/www/html/dw_1/userfiles
     Your document root is:  /html/
     
         $UserFilesRealPath = '/var/www/html/dw_1/userfiles/';
-	$Config['UserFilesPath'] = '/html/dw_1/userfiles/';
+	$Config['UserFilesPath'] = '/dw_1/userfiles/';
         $Config['UserFilesAbsolutePath'] = $UserFilesRealPath;
   
    The rest follows the instructions for a single userfiles directory in 3 above.  
@@ -205,6 +206,12 @@ choose to convert the FCK syntax to native DokuWiki syntax.
 This means that the user can choose which editor to use for a particular project.  One scenario
 might be to start with basic DokuWiki text editing and then switch to FCK for layout and design.
 
+9. TABLE HEADERS
+Table headers can be created by selecting the text in the header cell and then selecting "Create TH"
+from the drop-down "Style" menu.  Initially, the selected text will appear against the standard
+DokuWiki gray-blue TH background color.  After the file has been saved, the cell will have been
+converted to a standard DokuWiki TH cell and the entire cell will have the gray-blue background color.
+To convert a TH back to a TD, select the TH text and choose "Remove TH" from the "Style" menu.   	
 
 Myron Turner
 turnermm02@shaw.ca

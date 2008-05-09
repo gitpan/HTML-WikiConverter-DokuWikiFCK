@@ -104,5 +104,13 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
       irregularities in the translation of FCKeditor the extended markup.  The lock timer
       has been hidden from trhe user and is now automatically disabled.  There have been imporvements
       to image uploading and inserting from the FCK editor toolbar image tool. This includes
-      an improved facility to create multliple userfile directories where t here is more than
+      an improved facility to create multliple userfile directories where there is more than
       one DW installation on a server. 
+
+0.21 Thursday May 8 2008
+     - Added facility for creating table header elements.  These are consistent with the standard
+        DokWiki TH style.   
+
+     Friday May 9 2008
+     - Corrected Section 4 of README with respect to handling of path to /userfiles/ directory in
+     situations where the userfiles directory is not found in the Document Root directory. 

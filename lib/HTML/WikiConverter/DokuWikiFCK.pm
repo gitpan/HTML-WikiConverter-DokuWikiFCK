@@ -20,7 +20,7 @@ use base 'HTML::WikiConverter::DokuWiki';
 use HTML::Element;
 use  HTML::Entities;
 
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 
   my $SPACEBAR_NUDGING = 1;
   my  $color_pattern = qr/
@@ -62,7 +62,7 @@ sub new {
         $nudge_char = ' ';
   }
   $self->{'_fh'} = 0;  # turn off debugging
-#  $self->{'_fh'} = $self->getFH();  
+  # $self->{'_fh'} = $self->getFH();  
   
   return $self;
 }
@@ -164,9 +164,29 @@ sub _plugin {
 sub _td_start {
   my($self, $node, $rules ) = @_;
     my $text = $self->get_elem_contents($node);
+    my $prefix;
+   
     $self->{'in_table'} = 1;
  
-    my $prefix =  $self->SUPER::_td_start($node, $rules); 
+    
+    my %table_header = $self->_get_type($node, ['th', 'th'], 'font'); 
+    $self->log('td_start',$table_header{'th'});     
+    if(%table_header) {
+        if($table_header{'th'} =~ 'th') {
+               $prefix = ' ^ ' ;
+         
+        }
+        else {
+               $prefix = ' | ' ;
+        }
+
+      $text = $self->trim($text);         
+    }
+
+    else {
+        $prefix =  $self->SUPER::_td_start($node, $rules);
+     }
+    
     my $atts =$self->_get_basic_attributes($node);
     
     $text = $self->fix_td_color($atts,$text);   
@@ -174,11 +194,11 @@ sub _td_start {
     if($atts->{'background'}) {
         $text=~ s/(\s{3,})/$self->_spaces_to_strikeout($1,$atts->{'background'})/ge;
     }
-  
+    
 
    my $suffix = $self->_td_end($node,$rules);
 
-  $text =~ s/\n/ /gm;
+   $text =~ s/\n/ /gm;
 
    return $prefix . $text . $suffix;
    
@@ -966,7 +986,7 @@ sub _block {
            my($self, $outref ) = @_;  
 # my $parsed_html = $self->parsed_html;
 #$self->log($parsed_html);
-#$self->log("\npostprocess_output (1)",$$outref);
+# $self->log("\npostprocess_output (1)",$$outref);
             $$outref =~ s/^\s+//;          # trim  
             $$outref =~ s/\s+$//;
             $$outref =~ s/\n{2,}/\n/g;     # multi
@@ -1061,7 +1081,8 @@ sub _block {
            $self->del_xtra_c_aligns($$outref);
             
             if($self->{'in_table'}) {    # insure tables start with newline
-                $$outref =~ s/align>\s*\|/align>\n\|/gms; 
+               # $$outref =~ s/align>\s*\^/align>\n\^/gms;
+                $$outref =~ s/align>\s*(\||\^)/align>\n$1/gms; 
             }
                 #insert margin 0 at end of file, so that cursor returns to margin
            $$outref .= "\n<align 0px></align>\n" unless $$outref =~ /<align 0px><\/align>\s*$/;
