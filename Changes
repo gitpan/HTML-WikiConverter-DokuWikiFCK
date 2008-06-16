@@ -114,3 +114,11 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
      Friday May 9 2008
      - Corrected Section 4 of README with respect to handling of path to /userfiles/ directory in
      situations where the userfiles directory is not found in the Document Root directory. 
+
+0.22 Monday May 26 2008
+    - Fixed urlformatting for FCKeditor's smileys
+     
+    - major upgrade to plugin tool
+    
+0.23 Saturday June 14 2006
+    - Completed Table Formatting Tool   

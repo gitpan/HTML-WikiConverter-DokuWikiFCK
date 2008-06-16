@@ -190,11 +190,16 @@ identify the plugin from its syntax;it uses the same code as DokuWiki uses to
 identify plugins.  DokuWikiFCK will use the name you give in the dialogue only as a
 last resort. 
 
-If you have  previously used the plugin tool to identify a plugin, you can remove the DokuWikiFCK
-identifying code by re-selecting the plugin syntax, clicking on the plugin tool,
-leaving the dialog box empty, and clicking OK.
+When adding data for a text-based plugin, on subsequent occasions, you must re-set the plugin by
+again highlighting the plugin syntax and its enclosed data.  This insures that the plugin is
+correctly formatted to be recognized by DokuWikiFCK and deletes potentially code-breaking HTML markup
+that the GUI inserts into the plugin data.
 
-This technique does not always work with versions of PHP prior to version 5.  
+If you have previously used the plugin tool to identify a plugin, you can remove the plugin
+by re-selecting the plugin syntax, clicking on the plugin tool,leaving the dialog box empty,
+and clicking OK.  The plugin--and all its contained data--will be removed when the page is saved.  
+
+The plugin tool does not always work with versions of PHP prior to version 5.  
 
 8. EDITOR SUPPORT
 DokuWikiFCK now has a transparent facility for switching between the FCKeditor and the DokuWiki editor.
@@ -212,6 +217,27 @@ from the drop-down "Style" menu.  Initially, the selected text will appear again
 DokuWiki gray-blue TH background color.  After the file has been saved, the cell will have been
 converted to a standard DokuWiki TH cell and the entire cell will have the gray-blue background color.
 To convert a TH back to a TD, select the TH text and choose "Remove TH" from the "Style" menu.   	
+
+10.  TABLE FORMATTING TOOL
+As of version 23, there is a toolbar item for formatting tables.  Its appearance is a blue, white and gray
+checkerboard, representing the cells of a table.
+
+This tools supports both structural and 'cosmetic' formatting features:
+
+	        background colors for cells, rows, and columns 
+	        horizontal text alignment for cells, rows, and columns 
+	        setting of cell width and column spans
+                deleting individual cells 
+	        inserting, deleting and moving entire columns and rows 
+
+Clicking on the tool button opens up a dialog panel which contains complete instructions for use
+of all supported fomatting features.
+
+The TABLE HEADERS feature itemized in 9 above is still supported and remains the way to create
+standard DokuWiki table headers.  Background colors cannot be reset for DokuWiki-style table headers,
+since their background colors are pre-set by DokuWiki style sheets.  To set background colors for these
+cells using the TABLE FORMATTING TOOL, they have to first be set back to regular TD's, as described
+in item 9. 
 
 Myron Turner
 turnermm02@shaw.ca

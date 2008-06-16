@@ -20,7 +20,7 @@ use base 'HTML::WikiConverter::DokuWiki';
 use HTML::Element;
 use  HTML::Entities;
 
-our $VERSION = '0.21';
+our $VERSION = '0.23';
 
   my $SPACEBAR_NUDGING = 1;
   my  $color_pattern = qr/
@@ -57,13 +57,14 @@ sub new {
   $self->{'list_type'} = "";
   $self->{'list_output'} = 0;   # tells postprocess_output to clean up lists, if 1
   $self->{'in_table'} = 0;
+  $self->{'colspan'} = "";
   $self->{'do_nudge'} = $SPACEBAR_NUDGING;
   if(!$self->{'do_nudge'}) {
         $nudge_char = ' ';
   }
   $self->{'_fh'} = 0;  # turn off debugging
   # $self->{'_fh'} = $self->getFH();  
-  
+ 
   return $self;
 }
 
@@ -109,11 +110,11 @@ sub rules {
   $rules->{ 'header' } = { preserve => 1  };
   $rules->{ 'td' } = { replace => \&_td_start };
   $rules->{ 'th' } = { alias => 'td' };
-  $rules->{ 'tr' } = { start => "$NL_marker\n", line_format => 'single' };
+  $rules->{ 'tr' } = { start => "$NL_marker\n", line_format => 'single', end => \&_row_end };
   for( 1..5 ) {
     $rules->{"h$_"} = { replace => \&_header };
   }
-  $rules->{'plugin'} = { replace => \&_plugin };
+  $rules->{'plugin'} = { replace => \&_plugin};
 
   $rules->{'ins'} = { replace => \&_formats };
   $rules->{'b'} = { replace => \&_formats };
@@ -144,7 +145,7 @@ sub _formats {
 sub _plugin {
   my($self, $node, $rules ) = @_;
   my $text = $self->get_elem_contents($node);  # text is the plugin pattern
-
+  #  $self->log('_plugin -1', $text );
   $text = $self->trim($text);
   return "" if  !$text;
 
@@ -155,23 +156,74 @@ sub _plugin {
   }
 
      # escape open and closing tag characters (here returned as html entities) in plugin patterns
- $text =~ s/^((&lt;)+)/~$1~/g;
- $text =~ s/((&gt;)+)$/~$1~/g;  
-
+ $text =~ s/((&lt;)+)/~$1~/g if $text !~ /[~]&lt;/;
+ $text =~ s/((&gt;)+)/~$1~/g if $text !~ /&gt;[~]/;  
+ # $self->log('_plugin -2', $text );
   return '<plugin title="' . $title  .  '">' . "$text</plugin>";
+}
+
+
+sub _row_end {
+  my($self, $node, $rules ) = @_;
+ # $self->log('_row_end', $self->{'colspan'} );
+  if($self->{'colspan'}) {
+      return $self->{'colspan'};
+  }
+  $self->{'colspan'} = ""  
 }
 
 sub _td_start {
   my($self, $node, $rules ) = @_;
-    my $text = $self->get_elem_contents($node);
-    my $prefix;
-   
-    $self->{'in_table'} = 1;
+  my $text = $self->get_elem_contents($node);
+
  
-    
+    $self->{'colspan'} = "";
+    my $prefix = $self->SUPER::_td_start($node, $rules);
+     
+    $self->{'in_table'} = 1;  
+    $self->{'colspan'} = $node->attr('colspan') || ""; 
+
+    my $td_backcolor = "";
     my %table_header = $self->_get_type($node, ['th', 'th'], 'font'); 
-    $self->log('td_start',$table_header{'th'});     
+
+    my $align = $node->attr('align') || 'left';  
+    $align =~ /^(\w)\w+/; 
+    $align = uc($1);
+
+ 
+
+    if(!%table_header && $prefix !~ /\s*\^\s/) {
+       my $style = $node->attr('style') || '';  
+       if($style) {
+          my @styles = split ';', $style;
+          my $td_w;  my $td_bg; my $back_color = "";  my $td_width = "";
+          foreach my $s (@styles) {
+             if($s =~ /background-color/) {
+                    $td_bg = $s;
+             }
+             elsif($s =~ /width/) {
+                $td_w = $s;
+             }
+          }
+          $back_color = $self->_extract_style_value($td_bg, 'background-color') if $td_bg;
+
+          $td_width = $self->_extract_style_value($td_w, 'width') if $td_w;
+
+           if($back_color || $td_width) {
+               $td_backcolor = " #$align" . $back_color . $td_width . '# ';
+           }
+       }
+         else {
+            $align = "#$align#";
+         }
+    }
+    else {
+       $align = "";  $td_backcolor = "";
+    }
+
+
     if(%table_header) {
+     
         if($table_header{'th'} =~ 'th') {
                $prefix = ' ^ ' ;
          
@@ -183,13 +235,11 @@ sub _td_start {
       $text = $self->trim($text);         
     }
 
-    else {
-        $prefix =  $self->SUPER::_td_start($node, $rules);
-     }
-    
+   
     my $atts =$self->_get_basic_attributes($node);
     
     $text = $self->fix_td_color($atts,$text);   
+
 
     if($atts->{'background'}) {
         $text=~ s/(\s{3,})/$self->_spaces_to_strikeout($1,$atts->{'background'})/ge;
@@ -198,9 +248,16 @@ sub _td_start {
 
    my $suffix = $self->_td_end($node,$rules);
 
+   if($self->{'colspan'}) {
+       $self->{'colspan'} = chop $suffix;  # save suffix marker for _row_end
+ 
+   }
+   
    $text =~ s/\n/ /gm;
+   $td_backcolor = $align  if !$td_backcolor;
 
-   return $prefix . $text . $suffix;
+   # $self->log('_td_start', $td_backcolor);
+   return $prefix . $td_backcolor . $text . $suffix;
    
 }
 
@@ -716,15 +773,6 @@ sub _image {
     $src .= "?${w}";
   }
 
-   # an internal image, fetched from DokuWiki's image manager FCKeditor, if not http://
-   if($src !~ /userfiles\/image/) {
-          my @elems = split /=/, $src;
-         $src = pop @elems;          
-         return $self->_dwimage_markup($src,$alignment) if($src !~ /^http:/);
-         return "{{$src}}";  # absolute url, possible external image 
-   }
-
-
    if($src =~ /editor\/images\/smiley\/msn/) {
         if($src =~ /media=(http:.*?\.gif)/) {
               $src = $1;
@@ -736,6 +784,16 @@ sub _image {
 
         return "{{$src}}";
    }
+
+
+   # an internal image, fetched from DokuWiki's image manager FCKeditor, if not http://
+   if($src !~ /userfiles\/image/) {
+          my @elems = split /=/, $src;
+         $src = pop @elems;          
+         return $self->_dwimage_markup($src,$alignment) if($src !~ /^http:/);
+         return "{{$src}}";  # absolute url, possible external image 
+   }
+
 
    if($src =~ s/^(.*?)\/userfiles\/image\///) {
          return $self->_dwimage_markup($src,$alignment);
@@ -819,6 +877,7 @@ sub _link {
     my($self, $node, $rules ) = @_;   
     my $url = $node->attr('href') || '';
 
+    
     if ($url =~ /^\/(doku\.php\?id=)?((((\w)(\w|_)*)*:)*(\w(\w|_)*)*)$/) {
         # preprocess intenal page links
         # any href that looks like 
@@ -1005,10 +1064,11 @@ sub _block {
           if($self->{'do_nudge'}) {  
               $$outref =~ s/(<indent.*?>)(.*?)(?=\<\/indent>)/ $1 . $self->_other_convert($2)/msge;           
               $$outref =~ s/(?<![${NL_marker}${nudge_char}\x{b7}])([\s\x{a0}]{3,})(?![${EOL}${nudge_char}\x{b7}])/"  <indent style='color:white'>" . $self->_space_convert($1)  . "<\/indent>\n  "/msge;           
-              $$outref =~ s/~{3,}/\n<align left><\/align>/;
+              $$outref =~ s/~{3,}(?!&gt;)/\n<align left><\/align>/;
               $$outref =~ s/\|(.*?)<\/indent>\n(?=.*\|)/\|$1<\/indent>/mgs;
           }
 
+ 
      
                          # append align left to each newline, except where DokuWiki requires 
                          # a newline at the left-hand margin, immediately before its markup  
@@ -1033,8 +1093,9 @@ sub _block {
 
              $$outref =~ s/(?<=<align>)[\n\s]+(?=<\/align>)//gms;
              $$outref =~ s/\n{3,}/\n/gms;           
-     
+    
              $$outref =~ s/<align left>[\n\s]+<\/align>[\\]{2}\s*//gms;
+ 
              $$outref =~ s/([\s\n]*<align><\/align>[\s\n]*){2,}/<align><\/align>/gms;
              $$outref =~ s/([\s\n]*<align center><\/align>[\s\n]*){2,}/<align center><\/align>/gms;
              $$outref =~ s/([\s\n]*<align right><\/align>[\s\n]*){2,}/<align right><\/align>/gms;
@@ -1071,7 +1132,7 @@ sub _block {
 
           $$outref =~ s/<code><\/code>//gms;
    	      $$outref =~ s/<code>[\W]+<\/code>//gms;
-
+       
             # remove nested aligns
            $$outref =~ s/<align \w+>[\n\s]*(<align \w+>.*?<\/align>[\n\s]*)<\/align>/$1/gms;
 
@@ -1079,7 +1140,7 @@ sub _block {
             # may not be needed now that blank links are removed at line 821: [\\]{2}
            # $$outref =~ s/\[\[http:.*?cache&media=.*?[\\]{2}.*?\]\]/\n/gms;
            $self->del_xtra_c_aligns($$outref);
-            
+   
             if($self->{'in_table'}) {    # insure tables start with newline
                # $$outref =~ s/align>\s*\^/align>\n\^/gms;
                 $$outref =~ s/align>\s*(\||\^)/align>\n$1/gms; 
@@ -1092,7 +1153,7 @@ sub _block {
                 # otherwise sometimes cursor gets stuck at previous margin indent
                 # this works in conjuntion with the margin 0 above
            $$outref .= "\n<align left></align>\n";
-# $self->log("\npostprocess_output (last)",$$outref);
+ # $self->log("\npostprocess_output (last)",$$outref);
 
          }
 
@@ -1109,12 +1170,7 @@ my ($self, $text) = @_;
        my $oCount = 0;
        my $cCount = 0;
 
-       # $self->log('del_xtra_c_aligns Left (1)', scalar(@left));
-       # $self->log('del_xtra_c_aligns Right (1) ', scalar(@right));
-
        $text =~ s/((<align \w+>)|(<\/align>))/$self->fix_aligns($1, \$oCount, \$cCount)/egms;
-       # $self->log('del_xtra_c_aligns Open count', $oCount);
-       # $self->log('del_xtra_c_aligns Close count', $cCount);
     }
 }
 
@@ -1139,10 +1195,13 @@ sub fix_aligns {
 # then retuns native DW url markup
 sub _clean_url {
   my($self,$url, $markup) = @_;
- my $italics="";
- if($markup =~ /\//) {
-   $italics='//';;
- }
+  
+  return $url if $url=~/editor\/images\/smiley\/msn/;  
+  
+  my $italics="";
+  if($markup =~ /\//) {
+    $italics='//';;
+  }
 
   $url =~ s/^[^h]+//ms;
   $url =~ s/['"\/*_]{2,}$//ms;
@@ -1188,7 +1247,8 @@ sub trim {
 sub log {
    my($self, $where, $data) = @_;
     my $fh = $self->{_fh};
-
+    $where = "" if ! $where;
+    $data = "" if ! $data;    
     if( $fh  ) {
         print $fh "$where:  $data\n";
     }
