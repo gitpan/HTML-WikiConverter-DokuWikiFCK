@@ -12,6 +12,7 @@
  * @link   http://wiki.splitbrain.org/wiki:tpl:templates
  * @author Andreas Gohr <andi@splitbrain.org>
  */
+
 ?>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="<?php echo $conf['lang']?>" lang="<?php echo $conf['lang']?>" dir="ltr">
 <head>
@@ -40,6 +41,7 @@
             
             function setupFCK(dom) {
                setFCK_bgfg('media__manager');
+	       setFCK_bgfg('all');
                setFCK_bgfg('media__left');
                setFCK_bgfg('media__opts');
                setFCK_bgfg('media__right');
@@ -80,12 +82,8 @@
 	    alert("Please enter a file for uploading");
 	    return false;
 	   }
-           elems = filename.split(/\./);
-           ext = elems.pop();
-           if(!ext.match(/(jpeg|jpg|png|gif|bmp)/)) {
-              alert('filetype not supported: ' + ext);
-              return false;
-           }            
+
+
 	    setupFCK(document.getElementById('media__manager'));   
             return true;	  
       }
@@ -106,6 +104,11 @@
       }
 
   //--><!]]></script>
+<style type="text/css">
+#media__opts, #media__left, #media__tree { overflow: auto;   }
+#media__opts { height: 30%; }
+#all {  background-color:#F1F1E3; color:#737357; font-family: arial,helvetica; }
+</style>
 
 </head>
 

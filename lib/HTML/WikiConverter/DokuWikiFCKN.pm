@@ -1,4 +1,4 @@
-package HTML::WikiConverter::DokuWikiFCK;
+package HTML::WikiConverter::DokuWikiFCKN;
 
 #
 #
@@ -24,7 +24,7 @@ use  HTML::Entities;
 
 our $VERSION = '0.24';
 
-  my $SPACEBAR_NUDGING = 0;
+  my $SPACEBAR_NUDGING = 1;
   my  $color_pattern = qr/
         ([a-zA-z]+)|                                #colorname 
         (\#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}))|        #colorvalue
@@ -36,9 +36,9 @@ our $VERSION = '0.24';
 
   my $nudge_char = '&#183;';
  
+ 
   my $NL_marker = '~~~'; 
   my $EOL = '=~='; 
-  my $code_NL = '-NLn-'; 
 
   my %_formats = ( 'b' => '**',
                   'em' => '//',
@@ -55,9 +55,6 @@ our $VERSION = '0.24';
                );
 
 
-my $kbd_start   = '<font _dummy_/AmerType Md BT,American Typewriter,courier New>';
-my $kbd_end = '</font>';
-
 sub attributes {
  
  return(
@@ -69,6 +66,10 @@ sub attributes {
 
 }
 
+
+my $kbd_start   = '<font _dummy_/AmerType Md BT,American Typewriter,courier New>';
+my $kbd_end = '</font>';
+
 sub new {
   my $class = shift;
   my $self = $class->SUPER::new(@_);
@@ -78,9 +79,7 @@ sub new {
   $self->{'in_table'} = 0;
   $self->{'colspan'} = "";
   $self->{'code'} = 0;
-  $self->{'block'} = 0;
   $self->{'do_nudge'} = $SPACEBAR_NUDGING;
-
   if(!$self->{'do_nudge'}) {
         $nudge_char = ' ';
   }
@@ -128,15 +127,9 @@ sub rules {
   $rules->{ 'li' }   =  { replace => \&_li_start };
   $rules->{ 'ul' } =  { line_format => 'multi', block => 1, line_prefix => '  ',
                             end => "\n<align left></align>\n" },
-  $rules->{ 'ol' } = {  alias => 'ul' };
+  $rules->{ 'ol' } = {  alias => 'ul' };  
   $rules->{ 'hr' } = { replace => "$NL_marker\n----${NL_marker}\n" };
-  if($self->{'do_nudge'}) {
-      $rules->{ 'indent' } = { replace => \&_indent  };
-  }
-  else {  
-    $rules->{ 'indent' } = { preserve => 1  };
-  }
-
+  $rules->{ 'indent' } = { replace => \&_indent  };
   $rules->{ 'header' } = { preserve => 1  };
   $rules->{ 'td' } = { replace => \&_td_start };
   $rules->{ 'th' } = { alias => 'td' };
@@ -266,6 +259,29 @@ sub _td_start {
       $text = $self->trim($text);         
     }
 
+   
+    my $atts =$self->_get_basic_attributes($node);
+    
+    if($atts->{'background'}) {
+       $text=~ s/(<indent style=['"]color:.*?['"]>)*(\s{3,})(?=.*?(<\/indent>)*)/$self->_td_indent($1,$2, $atts->{'background'})/ge;
+   }
+    else {
+       $text = $self->fix_td_color($atts,$text);   
+       if(!$atts->{'background'}) {
+            if($text =~/<color\s+(.*?)\/(.*?)>/) {
+                 if($2) {
+                    $atts->{'background'} = $2;
+                 }
+                 elsif($1) {
+                    $atts->{'background'} = $1;
+                 }
+            }
+       }
+       if($atts->{'background'}) {  
+            $text=~ s/(<indent style=['"]color:.*?['"]>)*(\s{3,})(?=.*?(<\/indent>)*)/$self->_td_indent($1,$2, $atts->{'background'})/ge;
+       }
+      }
+
 
    my $suffix = $self->_td_end($node,$rules);
 
@@ -280,6 +296,77 @@ sub _td_start {
 
    return $prefix . $td_backcolor . $text . $suffix;
    
+}
+
+
+sub _td_indent {
+ my ($self, $indent, $text, $color) = @_;
+
+ my $indent_tag = ""; 
+ my $close_tag = "";
+
+ if($color) {
+   $indent_tag = '<indent style="color:' . $color . ';" background-color:' . $color . ';">';
+   $close_tag = '</indent>' if(!$indent);
+ }
+ 
+ 
+ return $indent_tag . $text . $close_tag;
+}
+
+sub fix_td_color {
+   my($self,$atts,$text) = @_;
+
+
+   my @colors = ();
+
+   if($text =~ /<color.*?<color/ms) {
+
+       while($text =~/<color(.*?)>/gms) {          
+             my $color_str = $1;             
+             $color_str =~ s/, /,/g;     
+             my @elems = split '/', $color_str;        
+             push @colors, {fg=>$elems[0],bg=>$elems[1]};  
+       }
+
+       my $fg = ""; my $bg = "";
+       my $dummy_fg = ""; my $dummy_bg = ""; 
+       my $dummy_set = 0; 
+       foreach my $color_h(@colors) {
+           if($color_h->{'fg'} ne $color_h->{'bg'}) {
+               if ($color_h->{'fg'} =~ /_dummy_/ ||  $color_h->{'bg'} =~ /_dummy_/) {
+                     if(!$dummy_set) { 
+                         $dummy_fg = $color_h->{'fg'}; 
+                         $dummy_bg = $color_h->{'bg'};
+                     }
+                 }
+                   else {
+                      $fg = $color_h->{'fg'}; 
+                      $bg = $color_h->{'bg'};       
+                      last; 
+                   }
+               }
+       
+           
+       }
+
+       if(!$fg) {
+           $fg = $dummy_fg ? $dummy_fg : '_dummy_';   
+       }
+       if(!$bg) {
+           $bg = $dummy_bg ? $dummy_bg : '_dummy_';   
+       }     
+       
+       $text=~ s/<color.*?>/ /gms; 
+       $text=~ s/<\/color>/ /gms;
+
+       $atts->{'background'} = $bg;
+  
+       return "<color $fg/$bg>$text</color>";
+
+   }
+
+  return $text;
 }
 
 
@@ -440,7 +527,8 @@ sub _span_contents {
   my $current_text = "";   # used where more than one span occurs in the markup retrieved as $text
 
   if($text =~ /^\s*<(color|font).*?\/(color|font)/) {
-        return $text;
+       $text =~ s/<color\s+[r#].*?\/[r#].*?>\s+<\/color>//g;   # remove empty color/font tags
+       return $text;
    }
 
   elsif($text =~ /(.*?)<(color|font).*?\/(color|font)/) {       
@@ -506,16 +594,16 @@ sub clean_text {
     return $text;
 }
 
-
 sub _code_types {
     my($self, $node, $rules ) = @_;
     my $text = $self->get_elem_contents($node) || "";
-    
+
     $text = $self->trim($text);
     $text =~ s/[\\]{2}/\n/g;   # required for IE which places <br> at end of each line
     $text =~ s/\n/$NL_marker\n/gms;
-    $text =~ s/<.*?>/ /gs;   # remove all tags
-    $text =~ s/\n$NL_marker\n/$code_NL/gms;   
+    $text =~ s/<.*?>/ /gs;
+
+   
     $text =~ s/(?<![\w[:punct:]:])[\s](?![\w[:punct:]:])/x\00/gms;
     return "" if ! $text;  
     $self->{'code'} = 1;
@@ -523,6 +611,9 @@ sub _code_types {
     return "$NL_marker\n<code>$NL_marker\n  $text $NL_marker\n</code>\n"; 
 
 }
+
+
+
 
 sub _li_start {
   my($self, $node, $rules ) = @_;
@@ -533,18 +624,31 @@ sub _li_start {
   $text =~ s/\n{2,}/\n/gm; 
   my $type = $self->SUPER::_li_start($node, $rules);
   $self->{'list_output'} = 1;  # signal postprocess_output to clean up lists
+  
   return  "$NL_marker\n$type" . $text . $EOL;
 }
 
+sub _li__start {
+  my($self, $node, $rules ) = @_;
+
+  my $text = $self->get_elem_contents($node) || "";
+  if($text !~ /<indent/) {
+     $text =~ s/([\s\x{a0}]{2,})/"  <indent style='color:white'>" . $self->_space_convert($1)  . "<\/indent>"/msge;  
+  }
+  else {
+    $text =~ s/(\x{b7}|$nudge_char)([\s\x{a0}]+)/$1 . $self->_space_convert($2)/gme;
+  }
+ 
+  my $type = $self->SUPER::_li_start($node, $rules);
+  $self->{'list_output'} = 1;  # signal postprocess_output to clean up lists
+  return  "$NL_marker$type" . $text . $EOL;
+ 
+}
 
 sub _p_alignment {
   my($self, $node, $rules ) = @_;
 
   my $output = $self->get_elem_contents($node) || "";
-   $output =~ s/<[\/]*indent>//gm;
-   $output =~ s/^([\s\x{a0}]+)/<indent>$1<\/indent>/m;
-   $output =~ s/<indent><\/indent>//;
-
 
  if($output =~ /^\s*[*\-]{1}\s+/gms) {
       
@@ -568,14 +672,16 @@ sub _p_alignment {
     }
   }
 
- 
 
   my $newline = "";
   if($self->{'do_nudge'}  &&  $output =~ /^\s{3,}/) {   
        $newline = "<align 1px></align>";
   }
+  if($self->{'do_nudge'}) {
+      $output =~ s/(?=<color\s+rgb.*?\/(rgb.*?)>)(.*?)(?=\<)/$self->_spaces_to_strikeout($2,$1)/gmse;    
 
-
+      $output =~ s/(\x{b7}|$nudge_char)([\s\x{a0}]+)/$1 . $self->_space_convert($2)/gme;
+  }
   if($output =~ /^(\s*|([\\][\\]))\s*<indent.*?>.*?<\/indent>\s*$/) {
               return "";
   }
@@ -645,6 +751,7 @@ sub _p_alignment {
 }
 
 
+
 sub _dwimage_markup {
   my ($self, $src, $align) = @_;
   if($src !~ /^http:/) {
@@ -654,16 +761,17 @@ sub _dwimage_markup {
       }
   }
 
+
       if($align eq 'center') { 
          return "\n<align center>\n{{$src}}\n</align>\n";
       }
       if($align eq 'right') {
-       return "<align right>\n{{$src}} </align>";
+        return "<align right>\n{{$src}} </align>";
       }
       if($align eq 'left') {
        return "<align left>\n{{$src}}</align>";
       }
-     if($align =~ /\d+px/) {
+      if($align =~ /\d+px/) {
        return "<align $align>\n{{$src}}\n</align>";
       }
 
@@ -751,9 +859,7 @@ sub _image_alignment {
     my $p = $node->parent;
     my %atts = $p->all_external_attr();
     foreach my $at(keys %atts) {
-
         if($at eq 'style') {
-
            if($atts{$at} =~ /margin-left:\s+(\d+px)/) {
                  return $1;
            }
@@ -767,6 +873,31 @@ sub _image_alignment {
   return ""; 
 }
 
+sub _indent {
+    my($self, $node, $rules ) = @_;     
+    
+    my @list = $node->content_list();
+    my $color = 'white';
+
+    foreach my $n(@list) {
+       if(exists($n->{'color'})) {
+           $color = $n->{'color'};
+           last;
+       }
+    }
+
+    my $text = $self->_as_text($node);
+
+    if($color eq 'white') {
+        my %color_atts = $self->_get_type($node, ['color','background-color'], 'color');
+        if(%color_atts) {      
+           my $bg = (exists $color_atts{'background-color'}) ? ($color_atts{'background-color'}) : "";
+           $color=$bg, if $bg;         
+        }
+    }
+
+    return "<indent style=\"color:$color; background-color:$color\">$text</indent>";
+}
 
 sub format_InternalLink {
   my($self, $node, $file) = @_; 
@@ -783,8 +914,7 @@ sub _link {
     my($self, $node, $rules ) = @_;   
     my $url = $node->attr('href') || '';
     my $internal_link = "";
-    my $_text = $self->get_elem_contents($node) || "";
-   
+    
     if ($url !~ /^\W*http:/ &&   $url =~ /\/(doku\.php\?id=)?:?((((\w)(\w|_)*)*:)*(\w(\w|_)*)*)$/) {
 
         my $format = $self->format_InternalLink($node,$2);
@@ -865,9 +995,9 @@ sub _link {
         $output = "${emphasis}${output}${emphasis}";
     }
 
-   if($left_alignment) {
-     $output = "$left_alignment${output}</align>";
-   }
+ if($left_alignment) {
+    $output = "$left_alignment${output}</align>";
+ }
     return $output;
 }
 
@@ -880,7 +1010,6 @@ sub _block {
        return $text;
    }
 
-  $self->{'block'} = 1;
   my $bg = "";
   my $fg = "";
   my $width = '80';
@@ -891,6 +1020,7 @@ sub _block {
   my $margin = "40";
 
   my $style = $node->attr('style');
+ 
   my @styles = split(';',$style);
   foreach my $at(@styles) {
      my $val = "";
@@ -912,40 +1042,84 @@ sub _block {
         $border = "$val"; 
      }
 
-     elsif($val = $self->_extract_style_value($at,'margin-left') ) {
+      elsif($val = $self->_extract_style_value($at,'margin-left') ) {
         if($val =~/(\d+)/) { 
           $margin = $1; 
        }
      }
- 
   }
-
-   my $basics = $self->_get_basic_attributes ($node);
+  my $basics = $self->_get_basic_attributes ($node);
    if(!$fg) {
       $fg = $basics->{'color'};
    }
    $face = $basics->{'face'};
-   $size = $basics->{'size'};  
+   $size = $basics->{'size'};      
    if($face || $size) {
     $font = "$face/$size";
    }
 
-   $fg = 'black' if($fg eq 'white' && (!$bg || !$fg || $bg eq 'white'));
 
-   if(!$bg) {
+  $fg = 'black' if($fg eq 'white' && (!$bg || !$fg || $bg eq 'white'));
+
+  if(!$bg) {
       if($text =~ /<color.*?\/(.*?)>/) {
                $bg = $1;
       }
-   }
+  }
+
+  
+
+  my  $color_regex = qr/
+    (rgb\(.*?\))|(\w+)
+   /x;
+
+  if($text =~ s/(?<=\<indent)(\s+style=\"color:)($color_regex)(?=.*?>)/$1$bg/gms) {
+          $text =~ s/(?<=background-color:)$color_regex/$bg/g;  
+  }
+  else {
+    $text =~ s/([\s\x{a0}]{2,})/$self->_spaces_to_strikeout($2,$bg)/ge;
+
+  }
 
    my $block = "<block $width:$margin:${bg};$fg;$border;$font>";
      $text =~ s/^\s+//;          # trim  
      $text =~ s/\s+$//;
      $text =~ s/\n{2,}/\n/g;     # multi
-
    return $block . $text . '</block>';
 
 }
+
+  sub _spaces_to_strikeout {
+     my($self, $text, $color) = @_;
+     my $style="";
+     if($color) {
+        $style = "  style=\"color: $color\"";  
+     }
+     return if ! $self->{'do_nudge'};
+                 
+     $text =~ s/([\s\x{a0}]{2,})/"  <indent${style}>" . $self->_space_convert($1)  . "<\/indent>  "/ge;
+     return $text; 
+  }
+
+  sub _space_convert {
+     my( $self, $spaces) = @_;
+
+     my $len = do { use bytes; length($spaces) };
+     return if !$len;
+
+     my $count = $spaces =~ s/[\s\x{a0}]/$nudge_char/gm;   
+     $spaces =~ s/[\s\x{a0}]//g;   
+
+     return $spaces;
+  }
+
+  sub _other_convert {
+     my( $self, $spaces ) = @_;
+
+     my $count = $spaces =~ s/.{3}/$nudge_char/gms;   
+
+     return $spaces;
+  }
 
 
    sub  postprocess_output {
@@ -953,7 +1127,6 @@ sub _block {
             $$outref =~ s/^[\s\xa0]+//;          # trim  
             $$outref =~ s/[\s\xa0]+$//;
             $$outref =~ s/\n{2,}/\n/g;     # multi
-            $$outref =~ s/\x{b7}/\x{a0}/gm;
 	    
            $$outref =~ s/(?<=<\/align>)\s+(?=<align>)//gms; #### ???? ####
            $$outref =~ s/\s+$//gms;
@@ -964,243 +1137,258 @@ sub _block {
    
            $$outref =~ s/\^<align 0px><\/align>//g;           # remove aligns at top of file
            $$outref =~ s/[\s\n]*<align>[\s\n]*<\/align>[\s\n]*//gsm;      # remove empty aligns
-           $$outref =~ s/<indent>\n*<\/indent>//gms;
-          
-            
- 
-          $$outref =~ s/(?<!\w\>)(?<!$NL_marker)\n(?!\<\W\w)/\n<align left><\/align> /gms; 
+                                                                  
+
+          if($self->{'do_nudge'}) {  
+
+              $$outref =~ s/(<indent.*?>)(.*?)(?=\<\/indent>)/ $1 . $self->_other_convert($2)/msge;           
+              $$outref =~ s/(?!(${NL_marker}|${nudge_char}|\x{b7}))([\s\x{a0}]{3,})(?!${nudge_char}|[\x{b7}])/"  <indent style='color:white'>" . $self->_space_convert($2)  . "<\/indent> "/msge;                       
+              $$outref =~ s/~{3,}(?!&gt;)/\n<align left><\/align>/;
+              $$outref =~ s/\|(.*?)<\/indent>\n(?=.*\|)/\|$1<\/indent>/mgs;
+          }
+
+
+
+         $$outref =~ s/(?<!\w\>)(?<!$NL_marker)\n(?!\<\W\w)/\n<align left><\/align> /gms; 
+
           $$outref =~ s/$NL_marker/\n/gms;
+
           $$outref =~ s/\n\s*(?=\|\n)//gms;
+
           $$outref =~ s/^\s+//gms;   # delete spaces at start of lines
 
-          $$outref =~ s/(<align 0px>[\n\s]*<\/align>[\n\s]*)+//gms;   
-          $$outref =~ s/(<align 1px>[\n\s]*<\/align>[\n\s]*)+//gms;   
+           $$outref =~ s/(<align 0px>[\n\s]*<\/align>[\n\s]*)+//gms;   
+           $$outref =~ s/(<align 1px>[\n\s]*<\/align>[\n\s]*)+//gms;   
 
-          $$outref =~ s/\n[\\](2)s*/\n/gms;
-
-
-         $$outref =~ s/(?<=<align>)[\n\s]+(?=<\/align>)//gms;
-         $$outref =~ s/\n{3,}/\n/gms;           
-
-         $$outref =~ s/<align left>[\n\s]+<\/align>[\\]{2}\s*//gms;
-
-         $$outref =~ s/([\s\n]*<align><\/align>[\s\n]*){2,}/<align><\/align>/gms;
-         $$outref =~ s/([\s\n]*<align center><\/align>[\s\n]*){2,}/<align center><\/align>/gms;
-         $$outref =~ s/([\s\n]*<align right><\/align>[\s\n]*){2,}/<align right><\/align>/gms;
-         $$outref =~ s/([\s\n]*<align left><\/align>([\s\n])*){2,}/$2 ? "<align left><\/align>$2" : "<align left><\/align>"/gmse;
+           $$outref =~ s/\n[\\](2)s*/\n/gms;
 
 
-         if($self->{'list_output'}) {   # start with look behind for bold
+             $$outref =~ s/(?<=<align>)[\n\s]+(?=<\/align>)//gms;
+             $$outref =~ s/\n{3,}/\n/gms;           
+    
+             $$outref =~ s/<align left>[\n\s]+<\/align>[\\]{2}\s*//gms;
+ 
+             $$outref =~ s/([\s\n]*<align><\/align>[\s\n]*){2,}/<align><\/align>/gms;
+             $$outref =~ s/([\s\n]*<align center><\/align>[\s\n]*){2,}/<align center><\/align>/gms;
+             $$outref =~ s/([\s\n]*<align right><\/align>[\s\n]*){2,}/<align right><\/align>/gms;
+             $$outref =~ s/([\s\n]*<align left><\/align>([\s\n])*){2,}/$2 ? "<align left><\/align>$2" : "<align left><\/align>"/gmse;
+
+
+           if($self->{'list_output'}) {
              $$outref =~ s/(?<![\*\-])([\*\-])(?:\s)(.*?)($EOL[\s\n]*)/$self->_format_list($1,$2, $3)/gmse; 
-         }
+           }
 
-         $$outref =~ s/(?!\n)<align left>/\n<align left>/gms;
-         $$outref =~ s/<font _dummy_\/courier New>\s*<\/font>//gms;
+          $$outref =~ s/(?!\n)<align left>/\n<align left>/gms;
 
-         $$outref =~ s/([\/\{]{2})*(\s*)(?<!\[\[)\s*(http:\/\/[\p{IsDigit}\p{IsAlpha}\p{IsXDigit};&?:.='"\/]{7,})(?!\|)/$self->_clean_url($3,$1, $2)/egms;   
+
+          $$outref =~ s/<font _dummy_\/courier New>\s*<\/font>//gms;
+
+       $$outref =~ s/([\/\{]{2})*(\s*)(?<!\[\[)\s*(http:\/\/[\p{IsDigit}\p{IsAlpha}\p{IsXDigit};&?:.='"\/]{7,})(?!\|)/$self->_clean_url($3,$1, $2)/egms;   
  
-         $$outref =~s/$EOL//g;
+          if($self->{'do_nudge'}) {  
+               $$outref =~ s/<indent style=[\'\"]color:white[\'\"]><\/indent>//gms;  # remove blank indents                          
+               $$outref =~ s/<indent style=['\"]color:white[\'\"]>(${nudge_char}){1,2}<\/indent>//msg;
 
-         $$outref =~ s/<code><\/code>//gms;
-   	     $$outref =~ s/<code>[\W]+<\/code>//gms;
+               $$outref =~s/(<indent style=[\'\"]color:rgb\(\d+,\s*\d+,\s*\d+\)\;?[\'\"]>)[\s\n]*<\/indent>[\s\n]*<indent\s+style=\"color:white\">(${nudge_char}|[\x{b7}\x{a0}]+<\/indent>)/$1\n$2/gms;
+               $$outref =~s/(${nudge_char}|[\x{b7}\x{a0}])+<indent style=['\"]color:white[\'\"]>(${nudge_char}|[\n\s\x{b7}\x{a0}])*<\/indent>/$1$2/gms;
+
+               $$outref =~s/<indent style=['"]color:rgb\(.*?\)['"]><\/indent>//gms;
+          }
+
+
+          $$outref =~s/$EOL//g;
+
+          $$outref =~ s/<code><\/code>//gms;
+   	      $$outref =~ s/<code>[\W]+<\/code>//gms;
        
-         $$outref =~ s/<align \w+>[\n\s]*(<align \w+>.*?<\/align>[\n\s]*)<\/align>/$1/gms;
+           $$outref =~ s/<align \w+>[\n\s]*(<align \w+>.*?<\/align>[\n\s]*)<\/align>/$1/gms;
 
-         $self->del_xtra_c_aligns($$outref);
+           $self->del_xtra_c_aligns($$outref);
 
-         $$outref =~ s/<\/align>\s*<br \/>/<\/align>/gms;
-         $$outref =~ s/\n+/\n/gms;
+            $$outref =~ s/<\/align>\s*<br \/>/<\/align>/gms;
+            $$outref =~ s/\n+/\n/gms;
 
 
-         if($self->{'in_table'}) {    # insure tables start with newline               
-             $$outref =~ s/align>\s*(\||\^)/align>\n$1/gms; 
+            if($self->{'in_table'}) {    # insure tables start with newline
+               
+                $$outref =~ s/align>\s*(\||\^)/align>\n$1/gms; 
+            }
+
+
+           $$outref =~ s/(?<=\<\/align>)(\s*[\\]{2}\s*)+//gms;
+           $$outref =~ s/(?<=\<\/align>)\s*<br \/>\s*//gms;
+
+           
+
+
+           if($self->{'code'}) {                 
+	            $$outref =~ s/x\00/ /gms;
+                $$outref =~ s/(?<=<code>)(.*?)(?=<\/code>)/$self->fix_code($1)/gmse;
+                $$outref =~ s/<\/code>/<\/code><br \/>/gm;
+           }
+
+         $$outref =~ s/<\/block>/<\/block><align left><\/align>/gm;         
+         $$outref .= "\n" unless $$outref =~ /\n\n$/m;
          }
 
 
-        $$outref =~ s/(?<=\<\/align>)(\s*[\\]{2}\s*)+//gms;
-        $$outref =~ s/(?<=\<\/align>)\s*<br \/>\s*//gms;
 
-        if($self->{'code'}) {                 
-           $$outref =~ s/x\00/ /gms;
-           $$outref =~ s/(?<=<code>)(.*?)(?=<\/code>)/$self->fix_code($1)/gmse;
-           $$outref =~ s/<\/code>/<\/code><br \/>/gm;
-       }
+sub del_xtra_c_aligns {
+my ($self, $text) = @_;
 
-       $$outref =~ s/<\/block>/<\/block><align left><\/align>/gm if $self->{'block'};         
-       $$outref .= "\n" unless $$outref =~ /\n\n$/m;
+    my @left = $text=~ /(<align)/gs;
+    my @right = $text=~ /(<\/align)/gms;
 
+
+    if(scalar @right > scalar @left) {
+       my $oCount = 0;
+       my $cCount = 0;
+
+       $text =~ s/((<align \w+>)|(<\/align>))/$self->fix_aligns($1, \$oCount, \$cCount)/egms;
     }
+}
 
 
-    sub del_xtra_c_aligns {
-    my ($self, $text) = @_;
+sub fix_aligns {
+  my ($self, $align, $open, $close) = @_;
+  $$close++ if $align =~ /<\/align/;
+  $$open++ if  $align =~ /<align \w+>/;
 
-        my @left = $text=~ /(<align)/gs;
-        my @right = $text=~ /(<\/align)/gms;
+  if ($$close > $$open) {
+       $$close--;
+      return "" 
+  }
 
+  return $align;
+}
 
-        if(scalar @right > scalar @left) {
-           my $oCount = 0;
-           my $cCount = 0;
-
-           $text =~ s/((<align \w+>)|(<\/align>))/$self->fix_aligns($1, \$oCount, \$cCount)/egms;
-        }
-    }
-
-
-    sub fix_aligns {
-      my ($self, $align, $open, $close) = @_;
-      $$close++ if $align =~ /<\/align/;
-      $$open++ if  $align =~ /<align \w+>/;
-
-      if ($$close > $$open) {
-           $$close--;
-          return "" 
-      }
-
-      return $align;
-    }
-
-    sub _clean_url {
-      my($self,$url, $markup, $spaces) = @_;
+sub _clean_url {
+  my($self,$url, $markup, $spaces) = @_;
   
-      return $url if $url=~/editor\/images\/smiley\/msn/; 
+  return $url if $url=~/editor\/images\/smiley\/msn/; 
 
-      if($markup =~/\{\{/) {   ## an external image, the first pair of brackets have been removed by regex
+  if($markup =~/\{\{/) {   ## an external image, the first pair of brackets have been removed by regex
        
-         return $markup . $spaces . $url;
+     return $markup . $spaces . $url;
+  }
+
+  my $italics="";
+  if($markup =~ /\//) {
+    $italics='//';;
+  }
+
+  $url =~ s/^[^h]+//ms;
+  $url =~ s/['"\/*_]{2,}$//ms;
+
+  return $italics .'[[' . $url  . ']]' . $italics;
+}
+
+sub _format_list {
+  my($self,$type, $item, $rest_of_sel) = @_;  
+    my $text = "${type}${item}${rest_of_sel}";
+    return $text if($text =~ /-&gt;/);
+    my $prefix = "";   # any matter which precedes list
+
+    my $p = 0;
+    pos($text) = 0;
+    while($text =~ /(.*?)(?<!\-\-\-)(?=\s+[\*\-]\s+.*?$EOL)/gms) {
+            $prefix .= $1;
+            $p = pos($text);
+    }
+      pos($text) = $p;
+      $text =~ /(.*?)$EOL/gms;
+      $item = $self->trim($1) if $1; 
+      if($item eq '-' || $item eq '*') { 
+              $item = "";      #remove empty list items,they overlap previous line
       }
+     $item =~ s/<indent\s+style=['"]color:white["']>($nudge_char)+<\/indent>\s*$//;
+     $item =~ s/<align\s*\w*>\s*<\/align>\s*$//gm;
+      return "$prefix\n  $item";
 
-      my $italics="";
-      if($markup =~ /\//) {
-        $italics='//';
+}
+
+sub fix_code {
+  my ($self, $text) = @_;
+  $text =~s/^([\n\s])+$//m;
+  $text =~s/([\n\s])+$//g;
+  $text =~ s/<indent.*?>($nudge_char)*<\/indent>//gms;
+
+  $text =~ s/[\x{b7}\x{a0}]//gms;
+  return $text;
+}
+sub trim {
+ my($self,$text) = @_;
+  $text =~ s/^\s+//;
+  $text =~ s/\s+$//;
+   return $text;
+}
+
+sub log {
+   my($self, $where, $data) = @_;
+    my $fh = $self->{_fh};
+    $where = "" if ! $where;
+    $data = "" if ! $data;    
+    if( $fh  ) {
+        print $fh "$where:  $data\n";
+    }
+}
+
+
+
+
+sub _get_basic_attributes {
+    my($self, $node) = @_;
+
+    my $fg = '';
+    my $bg = '';
+       my %color_atts = $self->_get_type($node, ['color','background-color'], 'color');
+       if(%color_atts) {  
+        $fg = (exists $color_atts{'color'}) ? ($color_atts{'color'}) : "";
+        $bg = (exists $color_atts{'background-color'}) ? ($color_atts{'background-color'}) : "";
       }
-
-      $url =~ s/^[^h]+//ms;
-      $url =~ s/['"\/*_]{2,}$//ms;
-
-      return $italics .'[[' . $url  . ']]' . $italics;
-    }
-
-    sub _format_list {
-      my($self,$type, $item, $rest_of_sel) = @_;  
-        my $text = "${type} ${item}${rest_of_sel}";
-        return $text if($text =~ /-&gt;/);
-        my $prefix = "";   # any matter which precedes list
-
-        my $p = 0;
-        pos($text) = 0;
-        while($text =~ /(.*?)(?<!\-\-\-)(?=\s+[\*\-]\s+.*?$EOL)/gms) {
-                $prefix .= $1;
-                $p = pos($text);
-        }
-          pos($text) = $p;
-          $text =~ /(.*?)$EOL/gms;
-          $item = $self->trim($1) if $1; 
-          if($item eq '-' || $item eq '*') { 
-                  $item = "";      #remove empty list items,they overlap previous line
-          }
-          $item =~ s/<align\s*\w*>\s*<\/align>\s*$//gm;
-          return "$prefix\n  $item";
-
-    }
-
-    sub fix_code {
-      my ($self, $text) = @_;
-
-      $text =~s/^([\n\s])+$//m;
-      $text =~s/([\n\s])+$//m;
-      $text =~ s/<indent.*?>($nudge_char)*<\/indent>//gms;
-      $text =~ s/$code_NL/\n/gms;
-      $text =~ s/[\x{b7}\x{a0}]//gms if $self->{'do_nudge'} ;
-
-      return $text;
-    }
-
-
-    sub trim {
-     my($self,$text) = @_;
-      $text =~ s/^\s+//;
-      $text =~ s/\s+$//;
-       return $text;
-    }
-
-    sub log {
-       my($self, $where, $data) = @_;
-        my $fh = $self->{_fh};
-        $where = "" if ! $where;
-        $data = "" if ! $data;    
-        if( $fh  ) {
-            print $fh "$where:  $data\n";
-        }
-    }
-
-
-    sub DESTROY {
-     my $self=shift;
-     my $fh = $self->{_fh};
-
-     if( $fh ) {
-        print $fh "\n-----------\n\n";
-        close($fh);
-     }
-
-    }
-
-
-    sub _get_basic_attributes {
-        my($self, $node) = @_;
-
-        my $fg = '';
-        my $bg = '';
-           my %color_atts = $self->_get_type($node, ['color','background-color'], 'color');
-           if(%color_atts) {  
-            $fg = (exists $color_atts{'color'}) ? ($color_atts{'color'}) : "";
-            $bg = (exists $color_atts{'background-color'}) ? ($color_atts{'background-color'}) : "";
-          }
 
  
-          my $face = ''; 
-          my $size = ''; 
-          my %font_atts = $self->_get_type($node, ['size', 'face'], 'font'); 
-          if(%font_atts) {
-            $face = (exists $font_atts{'face'}) ? ($font_atts{'face'}) : '';  
-            $size = (exists $font_atts{'size'}) ? ($font_atts{'size'}) : "";
-          }
-          return { 'face'=>$face, 'size'=>$size,'color'=>$fg, 'background'=>$bg };
+      my $face = ''; 
+      my $size = ''; 
+      my %font_atts = $self->_get_type($node, ['size', 'face'], 'font'); 
+      if(%font_atts) {
+        $face = (exists $font_atts{'face'}) ? ($font_atts{'face'}) : '';  
+        $size = (exists $font_atts{'size'}) ? ($font_atts{'size'}) : "";
+      }
+      return { 'face'=>$face, 'size'=>$size,'color'=>$fg, 'background'=>$bg };
+}
+
+sub _header {
+    my($self, $node, $rules ) = @_;
+
+    my $text = $self->_as_text($node);
+
+    $node->tag =~ /(\d)/;
+
+    my $pre_and_post_fix = "=" x (7 - $1);
+
+    my $str =  "\n" . "$NL_marker\n$pre_and_post_fix" . $text . "$pre_and_post_fix\n\n<align left></align>";
+    return $str;
+}
+
+sub _as_text {
+    my($self, $node) = @_;
+    my $text =  join '', map { $self->__get_text($_) } $node->content_list;
+    return defined $text ? $text : '';
+}
+
+sub __get_text {
+    my($self, $node) = @_;
+    $node->normalize_content();
+    if( $node->tag eq '~text' ) {
+        return $node->attr('text');
+    } elsif( $node->tag eq '~comment' ) {
+        return '<!--' . $node->attr('text') . '-->';
+    } else {
+        my $output = $self->_as_text($node)||'';
+        return $output;
     }
-
-    sub _header {
-        my($self, $node, $rules ) = @_;
-
-        my $text = $self->_as_text($node);
-
-        $node->tag =~ /(\d)/;
-
-        my $pre_and_post_fix = "=" x (7 - $1);
-
-        my $str =  "\n" . "$NL_marker\n$pre_and_post_fix" . $text . "$pre_and_post_fix\n\n<align left></align>";
-        return $str;
-    }
-
-    sub _as_text {
-        my($self, $node) = @_;
-        my $text =  join '', map { $self->__get_text($_) } $node->content_list;
-        return defined $text ? $text : '';
-    }
-
-    sub __get_text {
-        my($self, $node) = @_;
-        $node->normalize_content();
-        if( $node->tag eq '~text' ) {
-            return $node->attr('text');
-        } elsif( $node->tag eq '~comment' ) {
-            return '<!--' . $node->attr('text') . '-->';
-        } else {
-            my $output = $self->_as_text($node)||'';
-            return $output;
-        }
-    }
+}
 
 
 

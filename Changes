@@ -102,7 +102,7 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
 0.20  Tuesday April 8 2008
       There have been various undocumented changes made to DokuWikiFCK.pm to fix anomolies and
       irregularities in the translation of FCKeditor the extended markup.  The lock timer
-      has been hidden from trhe user and is now automatically disabled.  There have been imporvements
+      has been hidden from the user and is now automatically disabled.  There have been improvements
       to image uploading and inserting from the FCK editor toolbar image tool. This includes
       an improved facility to create multliple userfile directories where there is more than
       one DW installation on a server. 
@@ -116,9 +116,43 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
      situations where the userfiles directory is not found in the Document Root directory. 
 
 0.22 Monday May 26 2008
-    - Fixed urlformatting for FCKeditor's smileys
-     
+    - Fixed url formatting for FCKeditor's smileys     
     - major upgrade to plugin tool
     
-0.23 Saturday June 14 2006
+0.23 Saturday June 14 2008
     - Completed Table Formatting Tool   
+
+0.24 Sunday June 29 2008
+    - Tied the lock timer into DokuWiki's draft saving system
+
+     Saturday Jul 5 2008
+    -  Added Trim Tool To toolbar for removing extra spaces and extra paragraphs
+    -  Made some changes to regexes for space-bar positioning in DokuWikiFCK.pm 
+    
+    Friday Jul 11 2008    
+    - Completed Trim Tool
+    - mediamanager.php:  removed filetype check and added css for #all div (body) so that colors recur
+      on window reload 
+    
+    -Added a "Refresh" button to the editor,which will refresh a page after the timeout alert appears.
+
+    Saturday Jul 12 2008
+    - Added facility for embedding external images into editor by using the FCKeditor's Link tab of the 
+     FCKeditor's media manager. 
+
+    Tuesday Jul 14 2008
+    - Fixed IE problem with unrecognized tags in both editor's handling of <indent> and <plugin> tags. 
+    In plugintool/fckplugin.js the <plugin> tags are now put through the ProtectTags() function which
+    re-casts <plugin . . > as <FCK:plugin . . .> and </plugin> as </FCK:plugin>.  The indent tag is
+    handled by the DokuWiki action pugin indent.php, which converts <indent  to <FCK:indent and       
+    </indent> to </FCK:indent>.  This insures that the tags are recognizedand in the editor are
+    applied to the content they are supposed to enclose.  Otherwise they are separated from their
+    content and appear as older siblings to their content rather than as containers and
+    hence parents to their content.   
+
+   Thursday Sep 4 2008
+     - Many fixes since last entry, including handling of internal and external links, code blocks,
+   blockquotes, and lists.
+
+    - Most important change is splitting off of DokuWikiFCK from DokuWikiFCKN after the appearance of
+    Firefox 3, which now implements the &nbsp; in the editor.  See README.  
