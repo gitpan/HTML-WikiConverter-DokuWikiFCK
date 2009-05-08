@@ -22,7 +22,7 @@ use  HTML::Entities;
 
 
 
-our $VERSION = '0.25';
+our $VERSION = '0.27';
 
   my $SPACEBAR_NUDGING = 0;
   my  $color_pattern = qr/
