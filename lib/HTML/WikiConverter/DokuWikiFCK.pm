@@ -11,7 +11,7 @@ package HTML::WikiConverter::DokuWikiFCK;
 # GNU General Public License Version 2 or later (the "GPL")
 #    http://www.gnu.org/licenses/gpl.html
 #
-#  0.24.12
+#  0.24.14
 #
 
 use strict;
@@ -22,7 +22,7 @@ use  HTML::Entities;
 
 
 
-our $VERSION = '0.24';
+our $VERSION = '0.25';
 
   my $SPACEBAR_NUDGING = 0;
   my  $color_pattern = qr/
@@ -86,6 +86,7 @@ sub new {
   }
   $self->{'err'} = "NOERR\n";
   $self->{'_fh'} = 0;  # turn off debugging
+#  $self->{'_fh'} = getFH();
   return $self;
 }
 
@@ -206,7 +207,8 @@ sub _td_start {
   my($self, $node, $rules ) = @_;
   my $text = $self->get_elem_contents($node);
 
-
+    $text =~ s/\<br\>\s*$//m;     # for Word tables pasted into editor
+    $text =~ s/\<br\>\s*/<br \/>/gm;
     $self->{'colspan'} = "";
     my $prefix = $self->SUPER::_td_start($node, $rules);
      
@@ -541,6 +543,7 @@ sub _p_alignment {
   my($self, $node, $rules ) = @_;
 
   my $output = $self->get_elem_contents($node) || "";
+
    $output =~ s/<[\/]*indent>//gm;
    $output =~ s/^([\s\x{a0}]+)/<indent>$1<\/indent>/m;
    $output =~ s/<indent><\/indent>//;
@@ -782,9 +785,16 @@ sub format_InternalLink {
 sub _link {
     my($self, $node, $rules ) = @_;   
     my $url = $node->attr('href') || '';
+
+    my $name = $node->attr('name') || '';
+
     my $internal_link = "";
     my $_text = $self->get_elem_contents($node) || "";
-   
+
+    if($name) {
+         return '~~ANCHOR:' . $name . ':::' . $_text .'~~';
+    }
+
     if ($url !~ /^\W*http:/ &&   $url =~ /\/(doku\.php\?id=)?:?((((\w)(\w|_)*)*:)*(\w(\w|_)*)*)$/) {
 
         my $format = $self->format_InternalLink($node,$2);
@@ -816,7 +826,9 @@ sub _link {
     }
 
     my $output= $internal_link? $internal_link : $self->SUPER::_link($node, $rules); 
+
     my $text = $self->get_elem_contents($node) || "";
+
     my $left_alignment = "";   #actually any alignment, not just left
     if($text =~ s/(\<align \d+px>)//) {
       $left_alignment = $1;
@@ -833,8 +845,24 @@ sub _link {
 
     }
 
-    if($text =~ /^\s*[\\]{2}s*/) { return ""; }
-    
+
+    my $external_open; my $external_closed;
+  
+    if($text =~ /(\<(font|color).*?\>)(.*?)(<\/\2>)/) {
+         $external_open = $1;
+         $external_closed  = $4;
+         my $interior = $3;
+         $text = $3;
+
+         if($interior =~ /(\<(font|color).*?\>)(.*?)(<\/\2>)/) {
+            $text = $3;
+            $external_open = "${external_open}$1";  
+            $external_closed = "$4${external_closed}";
+         }
+          
+     }
+
+    if($text =~ /^\s*[\\]{2}s*/) { return ""; }    
     
     my $emphasis = "";
     if($text =~ /([\*\/_\"])\1/) {
@@ -868,6 +896,17 @@ sub _link {
    if($left_alignment) {
      $output = "$left_alignment${output}</align>";
    }
+
+
+   if($external_open) {
+        my($url, $name) = split /\|/, $output;
+
+        $name =~ s/<.*?>//g;
+
+        $output = $url . '|' . $name;
+        $output  = $external_open . $output . $external_closed;
+   }
+
     return $output;
 }
 
@@ -950,6 +989,7 @@ sub _block {
 
    sub  postprocess_output {
            my($self, $outref ) = @_;  
+
             $$outref =~ s/^[\s\xa0]+//;          # trim  
             $$outref =~ s/[\s\xa0]+$//;
             $$outref =~ s/\n{2,}/\n/g;     # multi
@@ -965,14 +1005,13 @@ sub _block {
            $$outref =~ s/\^<align 0px><\/align>//g;           # remove aligns at top of file
            $$outref =~ s/[\s\n]*<align>[\s\n]*<\/align>[\s\n]*//gsm;      # remove empty aligns
            $$outref =~ s/<indent>\n*<\/indent>//gms;
-          
+
             
  
           $$outref =~ s/(?<!\w\>)(?<!$NL_marker)\n(?!\<\W\w)/\n<align left><\/align> /gms; 
           $$outref =~ s/$NL_marker/\n/gms;
           $$outref =~ s/\n\s*(?=\|\n)//gms;
           $$outref =~ s/^\s+//gms;   # delete spaces at start of lines
-
           $$outref =~ s/(<align 0px>[\n\s]*<\/align>[\n\s]*)+//gms;   
           $$outref =~ s/(<align 1px>[\n\s]*<\/align>[\n\s]*)+//gms;   
 
@@ -997,7 +1036,7 @@ sub _block {
          $$outref =~ s/(?!\n)<align left>/\n<align left>/gms;
          $$outref =~ s/<font _dummy_\/courier New>\s*<\/font>//gms;
 
-         $$outref =~ s/([\/\{]{2})*(\s*)(?<!\[\[)\s*(http:\/\/[\p{IsDigit}\p{IsAlpha}\p{IsXDigit};&?:.='"\/]{7,})(?!\|)/$self->_clean_url($3,$1, $2)/egms;   
+         $$outref =~ s/([\/\{]{2})*(\s*)(?<!\[\[)\s*(http:\/\/[_\p{IsDigit}\p{IsAlpha}\p{IsXDigit};&?:.='"\/]{7,})(?!\|)/$self->_clean_url($3,$1, $2)/egms;   
  
          $$outref =~s/$EOL//g;
 
@@ -1014,6 +1053,7 @@ sub _block {
 
          if($self->{'in_table'}) {    # insure tables start with newline               
              $$outref =~ s/align>\s*(\||\^)/align>\n$1/gms; 
+             $$outref =~ s/[\\]{2}(?=\s+\|)//gms;  # remove line breaks at ends of cells
          }
 
 
@@ -1028,6 +1068,7 @@ sub _block {
 
        $$outref =~ s/<\/block>/<\/block><align left><\/align>/gm if $self->{'block'};         
        $$outref .= "\n" unless $$outref =~ /\n\n$/m;
+
 
     }
 
@@ -1063,11 +1104,9 @@ sub _block {
 
     sub _clean_url {
       my($self,$url, $markup, $spaces) = @_;
-  
       return $url if $url=~/editor\/images\/smiley\/msn/; 
 
       if($markup =~/\{\{/) {   ## an external image, the first pair of brackets have been removed by regex
-       
          return $markup . $spaces . $url;
       }
 

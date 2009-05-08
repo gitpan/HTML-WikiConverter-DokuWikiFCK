@@ -156,3 +156,30 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
 
     - Most important change is splitting off of DokuWikiFCK from DokuWikiFCKN after the appearance of
     Firefox 3, which now implements the &nbsp; in the editor.  See README.  
+
+0.25
+   September 07 2008
+   - modified image alignment to handle right-align and toolbar-set indents correctly 
+   - fixed external url's to recognize underscore characters
+   - fixed regex that distinguishes between horizontal rule and numbered list markup (dash), 
+     so HR doesn't corrupt lists  
+   - remove forced line-breaks from ends of table cells   
+
+  08 Sep 2008
+   - fckeditor/editor/plugins/tableformat/table.html 
+	 fixed: failure to append new column to end of table
+   - accommodated tables pasted from MS Word into FCKeditor by converting MS Word line-breaks to
+     HTML breaks and deleting end-of-line MS Word breaks from cells
+
+  09-12 Sep 2008
+   -  fckg/helper:
+      Changed auto-draft recovery mode so that when section editing is in effect, original text is
+      restored to editor instead of draft text. Reason: Except for draft section the rest of the 
+      document is saved as DW/FCK markup instead of HTML. Text is corrupted when restored to FCKeditor's
+      editing space. 
+  - fckg/action/meta:
+    	 As above in function  insertFormElement()
+   	 As above for recoveries which contain code blocks 
+  - Fixed markup for links which contain font and color tags, so that the tags don't get inserted 
+    into the name field of the DokuWiki link markup and corrupt the resulting output   
+
