@@ -11,7 +11,7 @@ package HTML::WikiConverter::DokuWikiFCKN;
 # GNU General Public License Version 2 or later (the "GPL")
 #    http://www.gnu.org/licenses/gpl.html
 #
-#  0.24.14
+#  
 #
 
 use strict;
@@ -19,10 +19,10 @@ use strict;
 use base 'HTML::WikiConverter::DokuWiki';
 use HTML::Element;
 use  HTML::Entities;
+use Params::Validate ':types';
 
 
-
-our $VERSION = '0.27';
+our $VERSION = '0.28';
 
   my $SPACEBAR_NUDGING = 1;
   my  $color_pattern = qr/
@@ -55,17 +55,13 @@ our $VERSION = '0.27';
                );
 
 
-sub attributes {
+ sub attributes {
+  return {
+          browser => { default => 'IE5', type => SCALAR },
+         group => { default => 'ANY', type => SCALAR },
+      };
+ }
  
- return(
- 
-   browser => { default => 'IE5' },
-   group => { default => 'ANY' }
-
- );
-
-}
-
 
 my $kbd_start   = '<font _dummy_/AmerType Md BT,American Typewriter,courier New>';
 my $kbd_end = '</font>';

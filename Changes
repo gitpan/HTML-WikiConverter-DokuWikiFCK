@@ -183,3 +183,39 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
   - Fixed markup for links which contain font and color tags, so that the tags don't get inserted 
     into the name field of the DokuWiki link markup and corrupt the resulting output   
 
+
+0.28
+
+
+12-14 May 2009
+	Fixed default attributes for WikiConverter.pm based on new info from
+	David Iberry, developeer of WikiConverter. Now html2wiki can be used
+	from command line without raising error: Can't use string ('ANY') as a
+	HASH ref 	
+
+	Added facility to handle large files for OS'es that cannot handle them.
+	(On systems where the shell cannot pass through large files, the files
+	would be lost; here large files are now saved to a tmp file in save.php
+	and reloaded for processing by dwfck in saveFCK.pl)
+
+	Added configuration options for handling large files. The 'big_files”
+	config setting defaults to FALSE and must be set to TRUE in the
+	configuation manager for large files facility to take effect. Options
+	included to set the time-out value and the file size limit, above which
+	the large file facility comes into play.
+
+
+15 May 2009
+	Disabled footnotes when converting from standard Dokuwiki
+	markup to DokuWikiFCK, so as to prevent corruption of markup.
+
+	Disabled FCK Preview mode when a big file is being edited, because the
+	file doesn't appear in the preview window when the preview button is
+	clicked--although it is not lost. 
+
+26 July 2009
+	--Added facility for selecting language dictionary using the FCKeditor's 'SpellerPages' facility, which
+        is set in fckconfig.js and uses gnu's aspell
+        --a new file was added, fckeditor/aspell.php, which serves as pop-up for selecting languages;
+          this script automatically detects all available aspell dictionaries and is accessed
+          via a new "Language" buttons on the editing page

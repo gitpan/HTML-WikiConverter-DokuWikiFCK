@@ -12,6 +12,7 @@ Table of Contents
   5. FCKEDITOR TOOLBAR
     DokuWikiFCK Tools and Toolbar Extensions
   6. LOCK TIME OUT AND AUTO-DRAFT SYSTEM
+  7. SUPPORT FOR LARGE FILES
 
 1. INSTALLATION
 
@@ -201,9 +202,15 @@ plugin which supports the new syntax created by DokuWikiFCK.pm.
         mode of this tool is operable only with the older protocol governing runs of 
         spaces (see 2. above). 
 
+   Spell Checker
+        DokuWikiFCK supports the FCKeditor SpellerPages facility.  To use this facility,
+        you must have GNU aspell installed and all required aspell dictionaries. The
+        aspell binary must be in the web server's path.  On Mac OS X, for instance,
+        the ports command installs in the /opts directory and so /opts/bin
+        will very likely not be in the web server's path; hence a symbolic link from /usr/bin
+        to the aspell binary will be needed.
+      
 6. LOCK TIME OUT AND AUTO-DRAFT SYSTEM
-
-
 
 With version 24 of DokuWikiFCK, the FCKeditor is fully tied into DokuWiki's auto-draft and
 file locking systems. Until this tie-in, DokuWiki was unable to monitor the FCKeditor
@@ -230,4 +237,21 @@ Save or switch to Preview.
 
 See: http://www.dokuwiki.org/draft
      http://www.dokuwiki.org/locking
+
+7. SUPPORT FOR LARGE FILES
+
+On some systems the shell cannot pass through large files between scripts, hence the files
+would be lost.  Large files are now saved to a tmp file by save.php
+and reloaded for processing in saveFCK.pl The files are saved to a temp file ins Dokuiki's 
+data/tmp directory (this must be writable by the web server).
+
+Configuration options for handling large files (found in Configuration Manager):
+ big_files:     default=FALSE. 
+                Must be set to TRUE for large files facility to take effect.
+ big_file_sz:   default=65000 bytes.
+                Files larger than big_file_sz will be treated as Large Files; 
+ big_file_tm:   default=15 seconds.
+                If a large file takes longer big_file_tm seconds to be
+                processed, the procesing will be aborted and the original text will be saved--
+                which means that the current edits will be lost. 
 

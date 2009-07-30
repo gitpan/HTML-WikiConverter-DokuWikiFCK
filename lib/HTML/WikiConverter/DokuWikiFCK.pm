@@ -11,7 +11,6 @@ package HTML::WikiConverter::DokuWikiFCK;
 # GNU General Public License Version 2 or later (the "GPL")
 #    http://www.gnu.org/licenses/gpl.html
 #
-#  0.24.14
 #
 
 use strict;
@@ -19,10 +18,10 @@ use strict;
 use base 'HTML::WikiConverter::DokuWiki';
 use HTML::Element;
 use  HTML::Entities;
+use Params::Validate ':types';
 
 
-
-our $VERSION = '0.27';
+our $VERSION = '0.28';
 
   my $SPACEBAR_NUDGING = 0;
   my  $color_pattern = qr/
@@ -58,17 +57,14 @@ our $VERSION = '0.27';
 my $kbd_start   = '<font _dummy_/AmerType Md BT,American Typewriter,courier New>';
 my $kbd_end = '</font>';
 
+
 sub attributes {
- 
- return(
- 
-   browser => { default => 'IE5' },
-   group => { default => 'ANY' }
-
- );
-
+  return {
+            browser => { default => 'IE5', type => SCALAR },
+            group => { default => 'ANY', type => SCALAR },
+  };
 }
-
+			
 sub new {
   my $class = shift;
   my $self = $class->SUPER::new(@_);
@@ -152,6 +148,7 @@ sub rules {
   $rules->{'b'} = { replace => \&_formats };
   $rules->{'i'} = { replace => \&_formats };
   $rules->{'u'} = { replace => \&_formats };
+  $rules->{'sup'} = { replace  => \&_sup  }; 
   return $rules;
  
 }
@@ -506,6 +503,16 @@ sub clean_text {
     $text =~ s/\s+/ /gs;
           
     return $text;
+}
+
+sub _sup {
+    my($self, $node, $rules ) = @_;
+
+    my $text = $self->get_elem_contents($node) || "";
+    return "" if $text =~ /Anchor/i;
+    $text = $self->trim($text);
+    return "<sup>$text</sup>"; 
+
 }
 
 
