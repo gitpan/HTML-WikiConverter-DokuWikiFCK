@@ -1,0 +1,23 @@
+--- #YAML:1.0
+name:               HTML-WikiConverter-DokuWikiFCK
+version:            0.29
+abstract:           A WikiConverter Dialect supporting the FCKeditor in DokuWiki
+author:
+    - Myron Turner <turnermm02@shaw.ca>
+license:            unknown
+distribution_type:  module
+configure_requires:
+    ExtUtils::MakeMaker:  0
+build_requires:
+    ExtUtils::MakeMaker:  0
+requires:
+    HTML::WikiConverter:  0.061
+    HTML::WikiConverter::DokuWiki:  0.53
+no_index:
+    directory:
+        - t
+        - inc
+generated_by:       ExtUtils::MakeMaker version 6.50
+meta-spec:
+    url:      http://module-build.sourceforge.net/META-spec-v1.4.html
+    version:  1.4

@@ -98,13 +98,13 @@ if($dwplugins) {
     the modified version for the original, please enter the
     name of the directory where it is found, for instance:
               default
-    We will then install the new medimanager in lib/tpl/default.     
-    If you have done this in an earlier install, just his return.
+    We will then install the new medimanager in lib/tpl/default.
+         
     );   
    my $tpl_dir =  getDWPluginsDir('mediamanager.php',1);
    if(!$tpl_dir) {
       print "\nPlease copy the new mediamanger.php\n"
-            ."to the template directory, if you have not done\nthis in an earlier install.\n";
+            ."to the template directory.\n";
       exit; 
    }
    my $mediamanager = $pwd .'/fckg/mediamanager.php' ;

@@ -21,7 +21,7 @@ use  HTML::Entities;
 use Params::Validate ':types';
 
 
-our $VERSION = '0.28';
+our $VERSION = '0.29';
 
   my $SPACEBAR_NUDGING = 0;
   my  $color_pattern = qr/
@@ -39,20 +39,30 @@ our $VERSION = '0.28';
   my $EOL = '=~='; 
   my $code_NL = '-NLn-'; 
 
-  my %_formats = ( 'b' => '**',
+  my %_formats = ( 'b' => '**',                
                   'em' => '//',
                   'i'  => '//', 
                   'u' => '__', 
                   'ins' => '__'
                );
 
-  my %_format_regex = ( 'b' => qr/\*\*/,
+  my %_format_regex = ( 'b' => qr/\*\*/,                  
                         'em' => qr/\/\//,
-                        'i' => qr/\/\//,			
+                        'i' => qr/\/\//,
                         'u' => qr/__/, 
                         'ins' => qr/__/ 
                );
 
+  my %_format_esc =   ( 'b' => '%%**%%',                   
+                        'em' => '%%//%%',
+                        'i'  => '%%//%%', 
+                        'u' => '%%__%%', 
+                        'ins' => '%%__%%'
+               );
+
+ my %dw_code = ( 'regex' => qr/\'\'/,
+                 'esc' => "%%\'\'%%"
+              );
 
 my $kbd_start   = '<font _dummy_/AmerType Md BT,American Typewriter,courier New>';
 my $kbd_end = '</font>';
@@ -82,7 +92,7 @@ sub new {
   }
   $self->{'err'} = "NOERR\n";
   $self->{'_fh'} = 0;  # turn off debugging
-#  $self->{'_fh'} = getFH();
+  # $self->{'_fh'} = getFH();
   return $self;
 }
 
@@ -92,7 +102,7 @@ sub new {
 sub getFH {
   my($self) =  @_;
   local *FH; 
-  if(open(FH, ">> /var/tmp/fckw.log")) {
+  if(open(FH, ">> /var/tmp/fckg.log")) {
      return *FH;
   }
   $self->{'err'} = "$! \n";
@@ -113,28 +123,30 @@ sub rules {
   $rules->{ 'blockquote' } = { replace => \&_block };
   $rules->{ 'pre' } =  { replace => \&_code_types };  
   $rules->{ 'var' } =   { start => '//', end => '//' }; 
+
   $rules->{ 'address' } =  { start => '//', end => '//' }; 
   $rules->{ 'strike' } =  { start => '<del>', end => '</del>' }; 
   $rules->{ 'cite' } =  { start => '//', end => '//' }; 
   $rules->{ 'del' } =   { alias => 'strike'  };
-  $rules->{ 'code' } =  { replace => \&_code_types }; 
+
   $rules->{ 'kbd' } =   { start => $kbd_start, end => $kbd_end }; 
-  $rules->{ 'tt' } =    { alias => 'kbd' }; 
-  $rules->{ 'samp' } =  { start => '<font _dummy_/courier New>', end => '</font>' }; 
+  $rules->{ 'tt' } =    { start => '<font 120%/sans-serif>', end => '</font>' }; 
+  $rules->{ 'samp' } =  { start => '<font 120%/courier New>', end => '</font>' }; 
   $rules->{ 'q' }   =   { start => '"', end => '"' };  
   $rules->{ 'li' }   =  { replace => \&_li_start };
   $rules->{ 'ul' } =  { line_format => 'multi', block => 1, line_prefix => '  ',
                             end => "\n<align left></align>\n" },
   $rules->{ 'ol' } = {  alias => 'ul' };
   $rules->{ 'hr' } = { replace => "$NL_marker\n----${NL_marker}\n" };
+
   if($self->{'do_nudge'}) {
       $rules->{ 'indent' } = { replace => \&_indent  };
   }
   else {  
     $rules->{ 'indent' } = { preserve => 1  };
   }
-
-  $rules->{ 'header' } = { preserve => 1  };
+  $rules->{ 'fckg' } = { preserve => 1  };
+  $rules->{ 'header' } = { preserve => 1  };  
   $rules->{ 'td' } = { replace => \&_td_start };
   $rules->{ 'th' } = { alias => 'td' };
   $rules->{ 'tr' } = { start => "$NL_marker\n", line_format => 'single', end => \&_row_end };
@@ -142,13 +154,15 @@ sub rules {
     $rules->{"h$_"} = { replace => \&_header };
   }
   $rules->{'plugin'} = { replace => \&_plugin};
-  $rules->{ 'table' } = { start =>"<align left></align>", end => "<align left></align>" };
+  $rules->{ 'table' } = { start =>"<align left></align>", end => "<align left><br /></align>" };
  
   $rules->{'ins'} = { alias => 'u'};
   $rules->{'b'} = { replace => \&_formats };
   $rules->{'i'} = { replace => \&_formats };
   $rules->{'u'} = { replace => \&_formats };
+  
   $rules->{'sup'} = { replace  => \&_sup  }; 
+
   return $rules;
  
 }
@@ -165,8 +179,12 @@ sub _formats {
 
     $text =~ s/^$_format_regex{$node->tag}//;
     $text =~ s/$_format_regex{$node->tag}$//;
-
-    return $_formats{$node->tag} . $text . $_formats{$node->tag}; 
+    
+    my $tag = $node->tag;
+    
+    $tag = 'b' if $tag eq 'strong';
+ 
+    return ("_<". $tag  . "_>".  $text . "_<" . $tag . "_>"); 
      
 }
 
@@ -206,9 +224,11 @@ sub _td_start {
 
     $text =~ s/\<br\>\s*$//m;     # for Word tables pasted into editor
     $text =~ s/\<br\>\s*/<br \/>/gm;
+    $text =~ s/\\\\/<br \/>/gm;   # see _p_alignment() comment
+    $text =~ s/&lt;/fckgTableOpenBRACKET/gm;
     $self->{'colspan'} = "";
     my $prefix = $self->SUPER::_td_start($node, $rules);
-     
+
     $self->{'in_table'} = 1;  
     $self->{'colspan'} = $node->attr('colspan') || ""; 
 
@@ -274,8 +294,8 @@ sub _td_start {
    }
    
    $text =~ s/\n/ /gm;
-   $td_backcolor = $align  if !$td_backcolor;
 
+   $td_backcolor = $align  if !$td_backcolor;
 
    return $prefix . $td_backcolor . $text . $suffix;
    
@@ -515,23 +535,31 @@ sub _sup {
 
 }
 
-
 sub _code_types {
     my($self, $node, $rules ) = @_;
     my $text = $self->get_elem_contents($node) || "";
-    
+
     $text = $self->trim($text);
     $text =~ s/[\\]{2}/\n/g;   # required for IE which places <br> at end of each line
     $text =~ s/\n/$NL_marker\n/gms;
+
+  #  $text =~ s/[\/]*&lt;([\/]{2,2})*/fckgOpenPAREN/gms;       # substitution for open angle bracket
+    $text =~ s/&lt;/fckgOpenPAREN/gms;       # substitution for open angle bracket
+    $text =~ s/\/\*/fckgOpen_C_COMMENT/gms;   
+    $text =~ s/\*\//fckgClosed_C_COMMENT/gms;   
+ 
+    $text = $self->replace_formats($text);
+
     $text =~ s/<.*?>/ /gs;   # remove all tags
-    $text =~ s/\n$NL_marker\n/$code_NL/gms;   
+
     $text =~ s/(?<![\w[:punct:]:])[\s](?![\w[:punct:]:])/x\00/gms;
+
     return "" if ! $text;  
     $self->{'code'} = 1;
-
-    return "$NL_marker\n<code>$NL_marker\n  $text $NL_marker\n</code>\n"; 
+    return "$NL_marker\n<code>$NL_marker\nfckgCodeBLOCK  $text $NL_marker\n</code>\n"; 
 
 }
+
 
 sub _li_start {
   my($self, $node, $rules ) = @_;
@@ -546,24 +574,62 @@ sub _li_start {
 }
 
 
+sub _hanging_formats {
+   my ($self,$str, $search, $format) = @_;
+ 
+   my @matches = $str =~ /$_format_regex{$format}/g;
+  
+   my $instances = scalar @matches;
+
+   return $str if($instances % 2 == 0);
+   if($instances == 1) {
+       $str =~ s/$_format_regex{$format}/$_format_esc{$format}/;
+ 
+       return $str;
+   }
+
+   return  $str;
+}
+
+sub replace_formats {
+   my ($self, $output) = @_;
+
+   my @format_ids = ( 'b', 'i', 'u'); 
+   foreach my $format(@format_ids) {
+        if($output =~ /$_format_regex{$format}/gms) {          
+          $output =~ s/(?<!http:)($_format_regex{$format}(.*))/$self->_hanging_formats($1,$2, $format)/mse;          
+        }   
+    }
+
+  $output =~ s/_<(\w+)_>/$_formats{$1}/g;
+
+  if($output =~ /$dw_code{'regex'}/) {
+        $output =~ s/$dw_code{'regex'}/$dw_code{'esc'}/gms;
+  }
+
+  return $output;
+}
+
 sub _p_alignment {
   my($self, $node, $rules ) = @_;
-
+ 
   my $output = $self->get_elem_contents($node) || "";
 
    $output =~ s/<[\/]*indent>//gm;
    $output =~ s/^([\s\x{a0}]+)/<indent>$1<\/indent>/m;
    $output =~ s/<indent><\/indent>//;
+   $output =~ s/\\\\/<br \/>/gm;  # replace \\ with <br /> for p-to-line-break tool
 
+   $output = $self->replace_formats($output);
 
- if($output =~ /^\s*[*\-]{1}\s+/gms) {
+   if($output =~ /^\s*[*\-]{1}\s+/gms) {
       
         $self->{'list_output'} = 1;
         return "\n  $output$EOL"; 
- }
- elsif($output =~/\<code/) { 
+  }
+  elsif($output =~/\<code/) { 
      return $output;
- }
+  }
 
   if($output =~ /<align/gms || $output =~ /<\/align/gms || $output =~ /\{\{.*?\}\}/gms) {
 
@@ -575,7 +641,9 @@ sub _p_alignment {
     my $tag = $node->parent->tag();  
     if($tag eq 'td') { 
           return $output . "<br>";  ## use <br>, not <br /> so it doesn't getlopped of in postprocess
-    }
+                                    ## converted to <br /> in _td_start and since I don't see
+                                    ## where it would get lopped off, this could probably be <br />` 
+    }    
   }
 
  
@@ -875,6 +943,7 @@ sub _link {
     if($text =~ /([\*\/_\"])\1/) {
         $emphasis = "$1$1";
     }
+    $emphasis = ""  if $emphasis =~ /$_format_regex{'i'}/;
 
     if($text =~ /^(<.*?\w>).*?(<\/.*?>)$/) {
         my $start = $1;
@@ -989,15 +1058,15 @@ sub _block {
      $text =~ s/\s+$//;
      $text =~ s/\n{2,}/\n/g;     # multi
 
-   return $block . $text . '</block>';
+   return $block . $text . '</block><br />';
 
 }
 
 
    sub  postprocess_output {
-           my($self, $outref ) = @_;  
-
-            $$outref =~ s/^[\s\xa0]+//;          # trim  
+    
+      my($self, $outref ) = @_;  
+      $$outref =~ s/^[\s\xa0]+//;          # trim  
             $$outref =~ s/[\s\xa0]+$//;
             $$outref =~ s/\n{2,}/\n/g;     # multi
             $$outref =~ s/\x{b7}/\x{a0}/gm;
@@ -1007,24 +1076,25 @@ sub _block {
            $$outref=~s/http\:(?!\/\/)/http:\/\//gsm; # replace missing forward slashes
            $$outref=~s/__(\/\/[\[\{])/$1/gsm;        # remove underlining markup
            $$outref=~s/([\}\]]\/\/)__/$1/gsm;        #   ditto
+    
+           $$outref =~ s/<fckg><\/fckg>//gms;
 
-   
            $$outref =~ s/\^<align 0px><\/align>//g;           # remove aligns at top of file
            $$outref =~ s/[\s\n]*<align>[\s\n]*<\/align>[\s\n]*//gsm;      # remove empty aligns
            $$outref =~ s/<indent>\n*<\/indent>//gms;
-
-            
+                
  
           $$outref =~ s/(?<!\w\>)(?<!$NL_marker)\n(?!\<\W\w)/\n<align left><\/align> /gms; 
           $$outref =~ s/$NL_marker/\n/gms;
+
           $$outref =~ s/\n\s*(?=\|\n)//gms;
+
           $$outref =~ s/^\s+//gms;   # delete spaces at start of lines
           $$outref =~ s/(<align 0px>[\n\s]*<\/align>[\n\s]*)+//gms;   
           $$outref =~ s/(<align 1px>[\n\s]*<\/align>[\n\s]*)+//gms;   
 
           $$outref =~ s/\n[\\](2)s*/\n/gms;
-
-
+ 
          $$outref =~ s/(?<=<align>)[\n\s]+(?=<\/align>)//gms;
          $$outref =~ s/\n{3,}/\n/gms;           
 
@@ -1043,13 +1113,13 @@ sub _block {
          $$outref =~ s/(?!\n)<align left>/\n<align left>/gms;
          $$outref =~ s/<font _dummy_\/courier New>\s*<\/font>//gms;
 
-         $$outref =~ s/([\/\{]{2})*(\s*)(?<!\[\[)\s*(http:\/\/[_\p{IsDigit}\p{IsAlpha}\p{IsXDigit};&?:.='"\/]{7,})(?!\|)/$self->_clean_url($3,$1, $2)/egms;   
+         $$outref =~ s/([\/\{]{2})*(\s*)(?<!\[\[)\s*(http:\/\/[_\p{IsDigit}\p{IsAlpha}\p{IsXDigit};&?:.\-='"\/]{7,})(?!\|)/$self->_clean_url($3,$1, $2)/egms;   
  
          $$outref =~s/$EOL//g;
 
          $$outref =~ s/<code><\/code>//gms;
    	     $$outref =~ s/<code>[\W]+<\/code>//gms;
-       
+      
          $$outref =~ s/<align \w+>[\n\s]*(<align \w+>.*?<\/align>[\n\s]*)<\/align>/$1/gms;
 
          $self->del_xtra_c_aligns($$outref);
@@ -1067,16 +1137,18 @@ sub _block {
         $$outref =~ s/(?<=\<\/align>)(\s*[\\]{2}\s*)+//gms;
         $$outref =~ s/(?<=\<\/align>)\s*<br \/>\s*//gms;
 
-        if($self->{'code'}) {                 
+        if($self->{'code'}) {            
            $$outref =~ s/x\00/ /gms;
            $$outref =~ s/(?<=<code>)(.*?)(?=<\/code>)/$self->fix_code($1)/gmse;
-           $$outref =~ s/<\/code>/<\/code><br \/>/gm;
+          # $$outref =~ s/<\/code>/<\/code><br \/>/gm;
        }
 
        $$outref =~ s/<\/block>/<\/block><align left><\/align>/gm if $self->{'block'};         
        $$outref .= "\n" unless $$outref =~ /\n\n$/m;
-
-
+       
+       if($$outref !~ /<align|<fckg.*?fckg>/gms) {
+           $$outref = '<fckg></fckg>' . $$outref;
+       }
     }
 
 
@@ -1153,13 +1225,9 @@ sub _block {
 
     sub fix_code {
       my ($self, $text) = @_;
-
-      $text =~s/^([\n\s])+$//m;
-      $text =~s/([\n\s])+$//m;
       $text =~ s/<indent.*?>($nudge_char)*<\/indent>//gms;
-      $text =~ s/$code_NL/\n/gms;
+      # $text =~ s/$code_NL/\n/gms;
       $text =~ s/[\x{b7}\x{a0}]//gms if $self->{'do_nudge'} ;
-
       return $text;
     }
 
@@ -1173,7 +1241,7 @@ sub _block {
 
     sub log {
        my($self, $where, $data) = @_;
-        my $fh = $self->{_fh};
+        my $fh = $self->{'_fh'};
         $where = "" if ! $where;
         $data = "" if ! $data;    
         if( $fh  ) {

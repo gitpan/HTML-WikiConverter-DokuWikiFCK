@@ -8,3 +8,4 @@ lib/HTML/WikiConverter/DokuWikiFCKN.pm
 lib/HTML/WikiConverter/DokuWikiFCK.pod
 fckg/fckg.tgz
 fckg/mediamanager.php
+META.yml                                 Module meta-data (added by MakeMaker)

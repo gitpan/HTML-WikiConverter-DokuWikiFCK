@@ -13,6 +13,7 @@ Table of Contents
     DokuWikiFCK Tools and Toolbar Extensions
   6. LOCK TIME OUT AND AUTO-DRAFT SYSTEM
   7. SUPPORT FOR LARGE FILES
+  8. BACKUPS OF FCK FILES WHEN SWITCHING TO NATIVE DOKUWIKI EDITOR 
 
 1. INSTALLATION
 
@@ -57,6 +58,9 @@ plugin which supports the new syntax created by DokuWikiFCK.pm.
       HTML::WikiConverter
       HTML::WikiConverter::DokuWiki
 
+    d. EXTRA CSS
+    The file fckg/extra/style.css should be copied to your dokuwiki template
+    directory, which is normally lib/tp/default 
 
 2. SPACE-BAR POSITIONING
     The FCKeditor supports positioning of text and images using the Outdent, Indent, 
@@ -72,7 +76,7 @@ plugin which supports the new syntax created by DokuWikiFCK.pm.
     something over from the left margin, using the space-bar, when you switched over 
     to the browser it would be back at the left margin.  To compensate, DokuWikiFCK 
     saved runs of three or more spaces as medial dots.  This required a great deal 
-    of &#8220;book-keeping&#8221;.  First, since the middot is a printable character, 
+    of book-keeping.  First, since the middot is a printable character, 
     DokuWikiFCK had to make sure that it didn't display; then it had to convert the 
     middot to a non-breaking space when displaying in the browser; and it had to 
     keep track of whether it was in IE or in Firefox, since the problem didn't exist 
@@ -128,7 +132,7 @@ plugin which supports the new syntax created by DokuWikiFCK.pm.
             $Config['UserFilesPath'] = '/userfiles/'; 
             Note: 'path/to' does not include the document root directory itself! See the 
             example below. 
-            //$Config['UserFilesAbsolutePath'] = &#8221;&#8221; 
+            //$Config['UserFilesAbsolutePath'] = ""; 
             $Config['UserFilesAbsolutePath'] = $UserFilesRealPath; 
 
             EXAMPLE: 
@@ -162,8 +166,8 @@ plugin which supports the new syntax created by DokuWikiFCK.pm.
     DOKUWIKIFCK TOOLS AND TOOLBAR EXTENSIONS
 
     DokuWikiFCK implements a number of tools of its own and extensions to the 
-    standard toolbar items. These are all described fully on the features page. More 
-    briefly, they are: 
+    standard toolbar items.Some of these are described fully on the features page
+    of the web site.  More briefly, they are: 
 
     The plugin tool ('Plugin_Tool')
       a. This tool maintains the integrity of syntax plugins. 
@@ -209,6 +213,53 @@ plugin which supports the new syntax created by DokuWikiFCK.pm.
         the ports command installs in the /opts directory and so /opts/bin
         will very likely not be in the web server's path; hence a symbolic link from /usr/bin
         to the aspell binary will be needed.
+
+   
+   Creating Code Blocks
+    
+       With the Style->Code Selection, when pasting text use this procedure,
+       depending on which browser you use:
+         FireFox:
+               Use the 'Paste' Icon or right-click and then click on "Paste"
+               Then Select Text and click on Style->Code
+               Inserting a new-line when at the end of a line sometimes causes the code 
+               block to divide into two blocks. There are two techniques that
+               help to prevent this.  The first is to make sure there are no
+               spaces at the end of the line.  Or else, move the cursor to the 
+               beginning of the next line and then hit return.  The
+               new line is now above the current line and below the line above it.               
+               IF no text follows your code block, insert a few extra blank lines
+               at the end of your page before creating the code block; otherwise
+               the cursor gets stuck inside the block and you can't move on
+               to the next line.
+        IE
+               Use the 'Paste' Icon, then select your text and click on the
+               <P> -> <BR> tool (also available by right-click mouse).  This
+               will remove the paragraphs (or double line spacing) which
+               can be restored after the code block has been created.
+               Then Select Text and click on Style->Code.   
+       Safari:
+              Safari is similar to FireFox but also may require using the <P> -> <BR>
+              tool, as in IE. 
+
+       In all cases, you can create an empty code block and insert text into it using 
+       Ctrl-C/Ctrl-V on Windows and Command-C/Command-V on the Mac.  
+       
+       To match the FCKeditor's handling of the Code styles, insert into your template
+       directory the style.css file found in fckg/extra.
+
+   Special Characters Tool ('SpecialChar')
+      The FCKeditor's Special Characters Tool comes with a table of chacters that can
+      be inserted into the text with a mouse click. DokuWikiFCK expands this by providing
+      a text box which will accept either an HTML character entity or entity number,
+      enabling the user to insert all potential character entities into the text.
+
+      Note on the Open Angle Bracket
+         The open angle bracket introduces an HTML tag and requires special treatment outside of a code
+         block.  The open angle bracket should be converted to a variable, using the Style
+         menu.  Highlight the bracket and select Style->variable.  Initially and text following
+         may be converted to italic.  To get rid of the italics after the bracket, use the eraser tool.
+         
       
 6. LOCK TIME OUT AND AUTO-DRAFT SYSTEM
 
@@ -254,4 +305,9 @@ Configuration options for handling large files (found in Configuration Manager):
                 If a large file takes longer big_file_tm seconds to be
                 processed, the procesing will be aborted and the original text will be saved--
                 which means that the current edits will be lost. 
+
+8. BACKUPS OF FCK FILES WHEN SWITCHING TO NATIVE DOKUWIKI EDITOR
+   The editing page gives the user the option of switching to the native DokuWiki Editor.  It offers
+   two choices, to convert to standard DokuWiki markup or to save the current file and start with
+   a blank editor.  
 

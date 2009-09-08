@@ -12,7 +12,6 @@
  * @link   http://wiki.splitbrain.org/wiki:tpl:templates
  * @author Andreas Gohr <andi@splitbrain.org>
  */
-
 ?>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="<?php echo $conf['lang']?>" lang="<?php echo $conf['lang']?>" dir="ltr">
 <head>
@@ -23,9 +22,14 @@
   </title>
   <?php tpl_metaheaders()?>
   <link rel="shortcut icon" href="<?php echo DOKU_TPL?>images/favicon.ico" />
-
+<?php
+$supported_media = 'jpeg,jpg,png,gif,bmp,tgz';
+?>
   <script type="text/javascript" charset="utf-8" ><!--//--><![CDATA[//><!--
-
+  var browser_name=navigator.appName;
+  var  browser = browser_name.match(/Microsoft/) ? 'IE' : 'Netscape';
+  // var b_version=navigator.appVersion;
+                   
         var UsingFCKImageManager = false;  
         if(!opener || (opener && !opener.insertTags)) {
             opener = new Object();
@@ -40,8 +44,8 @@
             }
             
             function setupFCK(dom) {
+              
                setFCK_bgfg('media__manager');
-	       setFCK_bgfg('all');
                setFCK_bgfg('media__left');
                setFCK_bgfg('media__opts');
                setFCK_bgfg('media__right');
@@ -79,19 +83,32 @@
       function G_onsubmithandler() {
           var filename = document.getElementById('upload__name').value;
            if(!filename){
-	    alert("Please enter a file for uploading");
-	    return false;
+	          alert("Please enter a file for uploading");
+	          return false;
 	   }
+           elems = filename.split(/\./);
+           ext = elems.pop();
+           if(!ext.match(<?php echo '/(' . str_replace(',', '|',$supported_media) . ')/'?>)) {
+              alert('filetype not supported: ' + ext);
+              return false;
+           }     
+                
+            if(browser == 'IE') {
+                  
+                  window.setTimeout('setupFCKDelay()', 1500);
+            }
+            else setupFCK(document.getElementById('media__manager'));   
 
-
-	    setupFCK(document.getElementById('media__manager'));   
             return true;	  
       }
 
       function Gmedia_onLoadHandler() {
              document.forms[0].onsubmit = G_onsubmithandler;
              var m_hide = document.getElementById('media__hide');
-             if(m_hide)  m_hide.click();    
+             if(m_hide)  m_hide.click(); 
+
+        
+
 
              var labels = document.getElementsByTagName('label');
              for(var i=0; i< labels.length; i++) {
@@ -100,15 +117,26 @@
                       break;  
                 }
             }           
-           setupFCK(document.getElementById('media__manager'));   
+
+            if(browser == 'IE') {  // IE seems to need a delay before setting up screen
+                   
+                  window.setTimeout('setupFCKDelay()', 1500);
+  
+            }
+            else {
+             setupFCK(document.getElementById('media__manager'));   
+            }
+
       }
 
+  function setupFCKDelay() {
+        
+         setupFCK(document.getElementById('media__manager'));         
+  }
+            
+   
+
   //--><!]]></script>
-<style type="text/css">
-#media__opts, #media__left, #media__tree { overflow: auto;   }
-#media__opts { height: 30%; }
-#all {  background-color:#F1F1E3; color:#737357; font-family: arial,helvetica; }
-</style>
 
 </head>
 
@@ -121,13 +149,15 @@
 
         <?php /* keep the id! additional elements are inserted via JS here */?>
         <div id="media__opts"></div>
-
-        <?php tpl_mediaTree() ?>
+        <br /><br />
+          <?php tpl_mediaTree();  ?>    
     </div>
 
     <div id="media__right">
         <?php tpl_mediaContent() ?>
     </div>
 </div>
+
+ 
 </body>
 </html>

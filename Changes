@@ -219,3 +219,43 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
         --a new file was added, fckeditor/aspell.php, which serves as pop-up for selecting languages;
           this script automatically detects all available aspell dictionaries and is accessed
           via a new "Language" buttons on the editing page
+30 July 2009
+        Disabled the FCK_Preview Button on edit page. It is now hidden from view unless
+        the user belongs to the group “fck_preview”.  Or to an administrator specified group
+        set in the Configuration Manager.
+
+1 Aug 2009
+      Added line-break at end of tables for FireFox, so that cursor could be placed outside
+      table structure; otherwise it was locked inside the table if table wasn't followed by text. 
+
+3 Aug 2009
+     Fixed widowed back-slash that occurs in FireFox when the paragrah-to-line break
+    tool is used.
+    
+7 Aug 2009
+  Added '.button.btn_source { display: none; }' to style.css, so that visitors without edit
+  permission cannot use the 'Show Source' button, which poses a vulnerability by exposing
+  the FCKeditor and the editing buttons.    
+  
+9 Aug 2009
+  Added regex support to handle cases where an unmatched forward double slash would cause everything
+  following to be treated as italics.  This happened when the user  might enter something like
+             // comment
+  It also happened because of a bug in the way url's were marked up.  
+
+17 Aug 2009
+  Revised Style -> Code definition
+  Enabled use of HTML tags in Code Blocks
+  
+20 Aug 2009
+  Installed feature that backs up FCK files when user switches over to standard DokuWiki
+  editing mode 
+
+  Fixed feature that disables appearance of FCKeditor toolbar when non user clicks on 
+  "Show pagesource" button.  Security fix.  Only users can have access to toolbar.
+
+25-28  Aug 2009
+  Added function in action/edit.php to test if current file is fckg or native DW.  This prevents 
+  syntax plugin classes (at moment code.php) from being called when file is native DW and so
+  corrupting text.  Various checks are made.  But placed tag <fckg><fckg> at top of fckg
+  file to identify it, from DokuWikiFCK.pm postprocess().  
