@@ -64,7 +64,6 @@ openMsg();
 END {
 
 
-
 my $pwd = cwd();
 
 my $dwplugins =  getDWPluginsDir('fckg.tgz',0);
@@ -90,41 +89,6 @@ if($dwplugins) {
          print "Install successful\n";
      }
 
-    print qq(\n
-    The FCKeditor's image manager uses a modified version
-    of DokuWiki's mediamanager.php. The modified version is fully 
-    compatible with the original.  The original version
-    will be backed up as mediamanager.php.$$.  To substitute
-    the modified version for the original, please enter the
-    name of the directory where it is found, for instance:
-              default
-    We will then install the new medimanager in lib/tpl/default.
-         
-    );   
-   my $tpl_dir =  getDWPluginsDir('mediamanager.php',1);
-   if(!$tpl_dir) {
-      print "\nPlease copy the new mediamanger.php\n"
-            ."to the template directory.\n";
-      exit; 
-   }
-   my $mediamanager = $pwd .'/fckg/mediamanager.php' ;
-
-   $dwplugins =~ s/\/plugins.*//;
-   chomp($tpl_dir);
-   $tpl_dir = $dwplugins . '/tpl/' . $tpl_dir;
-   chdir($tpl_dir);
-
-   rename ('mediamanager.php', 'mediamanager.php' . '.' . $$);
-   @args = ("cp", $mediamanager, $tpl_dir);
-   if(system(@args) == 0) {
-         print "\nCopied new mediamanager to $tpl_dir\n";
-         print "Renamed original mediamanager: mediamanager.php.$$\n";
-         print "Now type:\n\t\tmake install\nat the command line\n";
-     }
-     else {
-           print "Unable to copy new media manager to $tpl_dir\n";
-           print "You may do this manually.\n"
-     }
   }
   else {
      print qq(\n

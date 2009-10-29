@@ -21,7 +21,7 @@ use  HTML::Entities;
 use Params::Validate ':types';
 
 
-our $VERSION = '0.29';
+our $VERSION = '0.30';
 
   my $SPACEBAR_NUDGING = 0;
   my  $color_pattern = qr/
@@ -85,6 +85,7 @@ sub new {
   $self->{'colspan'} = "";
   $self->{'code'} = 0;
   $self->{'block'} = 0;
+  $self->{'share'} = 0;
   $self->{'do_nudge'} = $SPACEBAR_NUDGING;
 
   if(!$self->{'do_nudge'}) {
@@ -154,8 +155,8 @@ sub rules {
     $rules->{"h$_"} = { replace => \&_header };
   }
   $rules->{'plugin'} = { replace => \&_plugin};
-  $rules->{ 'table' } = { start =>"<align left></align>", end => "<align left><br /></align>" };
- 
+ # $rules->{ 'table' } = { start =>"<align left></align>", end => "<align left><br /></align>" };
+  $rules->{ 'table' } = { replace => \&_table };
   $rules->{'ins'} = { alias => 'u'};
   $rules->{'b'} = { replace => \&_formats };
   $rules->{'i'} = { replace => \&_formats };
@@ -173,7 +174,7 @@ sub _formats {
 
     my $text = $self->get_elem_contents($node);
 
-    $text = $self->trim($text);
+  # $text = $self->trim($text);
     return "" if ! $text; 
     return "" if $text !~ /[\p{IsDigit}\p{IsAlpha}\p{IsXDigit}]/;
 
@@ -543,7 +544,7 @@ sub _code_types {
     $text =~ s/[\\]{2}/\n/g;   # required for IE which places <br> at end of each line
     $text =~ s/\n/$NL_marker\n/gms;
 
-  #  $text =~ s/[\/]*&lt;([\/]{2,2})*/fckgOpenPAREN/gms;       # substitution for open angle bracket
+  
     $text =~ s/&lt;/fckgOpenPAREN/gms;       # substitution for open angle bracket
     $text =~ s/\/\*/fckgOpen_C_COMMENT/gms;   
     $text =~ s/\*\//fckgClosed_C_COMMENT/gms;   
@@ -556,8 +557,7 @@ sub _code_types {
 
     return "" if ! $text;  
     $self->{'code'} = 1;
-    return "$NL_marker\n<code>$NL_marker\nfckgCodeBLOCK  $text $NL_marker\n</code>\n"; 
-
+    return "$NL_marker\n<code>${NL_marker}\n$text $NL_marker\n</code>\n"; 
 }
 
 
@@ -733,13 +733,13 @@ sub _dwimage_markup {
   }
 
       if($align eq 'center') { 
-         return "\n<align center>\n{{$src}}\n</align>\n";
+         return "\n<align center>\n{{ $src }}\n</align>\n";
       }
       if($align eq 'right') {
-       return "<align right>\n{{$src}} </align>";
+       return "<align right>\n{{ $src}} </align>";
       }
       if($align eq 'left') {
-       return "<align left>\n{{$src}}</align>";
+       return "<align left>\n{{$src }}</align>";
       }
      if($align =~ /\d+px/) {
        return "<align $align>\n{{$src}}\n</align>";
@@ -778,10 +778,12 @@ sub _image {
    if($src =~ /editor\/images\/smiley\/msn/) {
         if($src =~ /media=(http:.*?\.gif)/) {
               $src = $1;
+
         }
        else {
             my $HOST = $self->base_uri;
             $src = 'http://' . $HOST . $src if($src !~ /$HOST/);
+
        }
 
         return "{{$src}}   ";
@@ -865,6 +867,23 @@ sub _link {
 
     my $internal_link = "";
     my $_text = $self->get_elem_contents($node) || "";
+   
+# these manage shares
+   if($url =~ /file:/) {
+        $url =~ s/^file:[\/]+/__SHARE__/;
+        $url =~ s/\//\\/g;
+        $self->{'share'} = 1;
+        return "[[$url|$_text]]";
+   }
+   elsif($url =~/[\\]{2,}/) {
+        $url =~ s/^[\/]+//;
+        $url =~ s/^[\\]+/__SHARE__/;
+        $_text = $url if(!$_text);
+        $_text =~ s/\\{2,}/\\/g; 
+
+        $self->{'share'} = 1;
+        return "[[$url|$_text]]";
+    }
 
     if($name) {
          return '~~ANCHOR:' . $name . ':::' . $_text .'~~';
@@ -1061,11 +1080,34 @@ sub _block {
    return $block . $text . '</block><br />';
 
 }
+   sub _table {
+     my($self, $node, $rules ) = @_;
+     my $text = $self->get_elem_contents($node) || "";
+ 
+     my $table_header = "";
+     my $align = $node->attr('align');
+     if($align) {
 
+       if($text=~/$NL_marker(.*?)$NL_marker/gms) {  
+           my $row   = $1;  
+           my @cols = $row=~/[\|\^]/g;
+           my $cols = scalar @cols;    
+           if($cols) {
+             $cols--;
+             $table_header = $NL_marker . "|++THEAD++ ALIGN=$align" .  '|' x $cols ;  
+          }
+       }
+     }
+        
+   #  return "<align left></align>${table_header}$text<align left><br /></align>";
+  return "<align left></align>${table_header}$text<align left></align>++END_TABLE++";
+     
+   }
 
    sub  postprocess_output {
     
       my($self, $outref ) = @_;  
+
       $$outref =~ s/^[\s\xa0]+//;          # trim  
             $$outref =~ s/[\s\xa0]+$//;
             $$outref =~ s/\n{2,}/\n/g;     # multi
@@ -1114,7 +1156,9 @@ sub _block {
          $$outref =~ s/<font _dummy_\/courier New>\s*<\/font>//gms;
 
          $$outref =~ s/([\/\{]{2})*(\s*)(?<!\[\[)\s*(http:\/\/[_\p{IsDigit}\p{IsAlpha}\p{IsXDigit};&?:.\-='"\/]{7,})(?!\|)/$self->_clean_url($3,$1, $2)/egms;   
- 
+
+         $$outref =~ s/__SHARE__/\\\\/gms if $self->{'share'}; 
+
          $$outref =~s/$EOL//g;
 
          $$outref =~ s/<code><\/code>//gms;
@@ -1140,7 +1184,7 @@ sub _block {
         if($self->{'code'}) {            
            $$outref =~ s/x\00/ /gms;
            $$outref =~ s/(?<=<code>)(.*?)(?=<\/code>)/$self->fix_code($1)/gmse;
-          # $$outref =~ s/<\/code>/<\/code><br \/>/gm;
+           $$outref =~ s/<\/code>[\s\n]*$/<\/code><br \/>/;          
        }
 
        $$outref =~ s/<\/block>/<\/block><align left><\/align>/gm if $self->{'block'};         
@@ -1149,6 +1193,13 @@ sub _block {
        if($$outref !~ /<align|<fckg.*?fckg>/gms) {
            $$outref = '<fckg></fckg>' . $$outref;
        }
+      
+     
+      if($self->{'in_table'}) { 
+         $$outref =~ s/\+\+END_TABLE\+\+[\s\n]*$/<br \/>/;
+         $$outref =~ s/\++END_TABLE\+\+//g;
+      }
+
     }
 
 
@@ -1183,7 +1234,7 @@ sub _block {
 
     sub _clean_url {
       my($self,$url, $markup, $spaces) = @_;
-      return $url if $url=~/editor\/images\/smiley\/msn/; 
+      return "{{$url" if $url=~/editor\/images\/smiley\/msn/; 
 
       if($markup =~/\{\{/) {   ## an external image, the first pair of brackets have been removed by regex
          return $markup . $spaces . $url;

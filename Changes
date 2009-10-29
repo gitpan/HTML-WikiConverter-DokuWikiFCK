@@ -1,3 +1,5 @@
+rev 09-Oct_08-07_09
+
 Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
 
 0.07  Fri Jan 25 18:13:06 2008
@@ -259,3 +261,96 @@ Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
   syntax plugin classes (at moment code.php) from being called when file is native DW and so
   corrupting text.  Various checks are made.  But placed tag <fckg><fckg> at top of fckg
   file to identify it, from DokuWikiFCK.pm postprocess().  
+
+1 Sep - 12 Sep 2009
+  Converted over to FCKeditor 2.6
+  Fiddled with Code blocks (see 25-28 Aug above).  Removed internal tag identifier identifying
+  code block, since all files without <align>  tags are prefaced with <fckg> tag, as noted
+  above (25-28 Aug).  The code.php syntax plugin still has code to remove the identifier when
+  producing htm, for backward compatiblity. But any file which goes back through DokuWikiFCK.pm
+  will automatically have the identifier dropped.
+  
+14 Sep 2009  
+  Corrected bug in edit.php funtion fckg_edit_meta() which cause a return before scripts
+  were loaded when there was no INFO['userinfo'] array, making the editor unworkable in
+  an open wiki, where one does not have to be a user to make edits.
+
+16 Sep 2009
+   Added support for positioning of table--right, center, left.
+    
+  
+17 Sep 2009
+  
+
+  Updated Javascript in edit.php, call back function repl_cb(), so that it accommodates
+  urls in tables.
+     
+  Added <br /> to end of file as simple way to accommodate block elements (code,table)
+  that come at end of file.
+  Note: code blocks and tables at top of file also capture FCKeditor's cursor.  
+    
+18 Sep 2009
+  Updated Javascript in edit.php, call back function repl_cb(), so that it accommodates
+  urls in code blocks.
+       
+2 Oct 2009
+  Fixed broken smiley image url, in _clean_url, by returning url with prepended {{,
+  which got removed by the regex
+
+ 
+ In _formats(), removed trim() of spaces on either side of formatted character sequences, 
+ so that spacing  remains true to text; otherwise when adjacent space characters are selected,
+ the  spaces are lost:  this is**bold**, instead of this is** bold**
+
+01 Oct 2009
+    Temporary fix to security in media and link tools, preventing any user access to toolbar
+    who is not a registered user. In edit.php fckg_edit_meta:  returns if non-user, so that
+    editor doesn't load.
+      
+03 Oct 2009
+fixed security hole in media and link tools  
+    1. Added new configuration options to conf/metadata.php: guest_toolbar and guest_media.
+    These work in conjunction with two new toolbars are defined in fckconfig.js, DokuwikiNoGuest
+    and DokuwikiGuest for non_registered users: 
+      		guest_toolbar == 0:  DokuwikiNoGuest
+      		guest_media == 1:    DokuwikiGuest
+   2. Defined two new user types in registerOnLoad() of fckg/helper.php: visitor and user; the
+   appropriate type is assigned to the FCKeditor's editorInstance in the Javascript function
+   FCKeditor_OnComplete() which is written to the browser from registerOnLoad().  This makes
+   the distinction between a visitor and a registered user available to FCKeditor, so that
+   the upload facilities can be turned off for visitors in the link and media tools.  This
+   required modifications to fckeditor/editor/filemanager/browser/default:
+            browser.html, frmcreatefolder.html, frmupload.html
+   and to fckeditor/editor/dialog/
+           fck_image/fck_image.js and fck_link/fck_link.js   
+     
+   3.  Added newline after image for conversion from DWFCK to DW in action/edit.php: 
+   fck_convert_text()
+     Also in conversion replaced newline with two newlines so that new paragraph is assured
+       
+04 Oct 2009
+ Fixed bug in tables in edit.php Javascript function repl_cb(), which caused
+ HTML brackets to output as &lt; and &gt; entities instead of being output as
+ brackets, causing the bracket to p;rint to the screen.
+ 
+05 Oct 2009
+ Added Support for Samba Shares (fckeditor/dialog/fck_link.html,
+  fckeditor/dialog/fck_link/fck_link.js, DokuWikiFCK.pm)
+  
+06 0ct 2009
+ Added fit window tool to toolbar
+
+ 
+07 Oct 2009   
+ Re-coded margin styles in table.php, which had been margin: left, right and center.
+ Now left and right alignments get alignments from the align attribute while the
+ margins get 12px on the side adjacent to the text that  wraps around table and the
+ other margins are 6px.  The center align remains as both margin:center and align=center.
+ Only IE accepts align=center when the margins are set to other values; the other browsers
+ all shift to the left no matter what the align attribute is.
+ 
+08 Oct 2009
+ Fixed regex bug in DokuWikiFCK.pm which prevented tables with both table header and 
+ table alignment from implementing alignment code,  in _table() function. Change:
+         @cols = $row=~/[\|]/    to     @cols = $row=~/[\|\^]/
+ 
