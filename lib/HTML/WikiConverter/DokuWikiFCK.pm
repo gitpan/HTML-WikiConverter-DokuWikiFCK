@@ -21,7 +21,7 @@ use  HTML::Entities;
 use Params::Validate ':types';
 
 
-our $VERSION = '0.31';
+our $VERSION = '0.31.1';
 
   my $SPACEBAR_NUDGING = 0;
   my  $color_pattern = qr/
