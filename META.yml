@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               HTML-WikiConverter-DokuWikiFCK
-version:            0.30
+version:            0.31
 abstract:           A WikiConverter Dialect supporting the FCKeditor in DokuWiki
 author:
     - Myron Turner <turnermm02@shaw.ca>

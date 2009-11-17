@@ -21,7 +21,7 @@ use  HTML::Entities;
 use Params::Validate ':types';
 
 
-our $VERSION = '0.30';
+our $VERSION = '0.31';
 
   my $SPACEBAR_NUDGING = 0;
   my  $color_pattern = qr/
@@ -94,6 +94,7 @@ sub new {
   $self->{'err'} = "NOERR\n";
   $self->{'_fh'} = 0;  # turn off debugging
   # $self->{'_fh'} = getFH();
+  $self->{'os'} = $^O;
   return $self;
 }
 
@@ -103,6 +104,7 @@ sub new {
 sub getFH {
   my($self) =  @_;
   local *FH; 
+  #  if(open(FH, '>> C:\\Windows\\Temp\\fckg.log')) { 
   if(open(FH, ">> /var/tmp/fckg.log")) {
      return *FH;
   }
@@ -176,8 +178,14 @@ sub _formats {
 
   # $text = $self->trim($text);
     return "" if ! $text; 
-    return "" if $text !~ /[\p{IsDigit}\p{IsAlpha}\p{IsXDigit}]/;
+    return "" if $text !~ /[\p{IsDigit}\p{IsAlpha}\p{IsXDigit}\\]/;
 
+    my @count = $text =~ /\\/g;
+    if(scalar @count) {
+      my $count = scalar @count;
+      $text =  "_<em_>fckgBACKSLASH_<em_>" x $count;
+      return $text;
+    }
     $text =~ s/^$_format_regex{$node->tag}//;
     $text =~ s/$_format_regex{$node->tag}$//;
     
@@ -246,7 +254,7 @@ sub _td_start {
        my $style = $node->attr('style') || '';  
        if($style) {
           my @styles = split ';', $style;
-          my $td_w;  my $td_bg; my $back_color = "";  my $td_width = "";
+          my $td_w;  my $td_bg; my $td_a; my $back_color = "";  my $td_width = "";
           foreach my $s (@styles) {
              if($s =~ /background-color/) {
                     $td_bg = $s;
@@ -254,12 +262,20 @@ sub _td_start {
              elsif($s =~ /width/) {
                 $td_w = $s;
              }
+            elsif($s =~ /text-align/) {
+                $td_a = $s;
+             }
           }
           $back_color = $self->_extract_style_value($td_bg, 'background-color') if $td_bg;
 
           $td_width = $self->_extract_style_value($td_w, 'width') if $td_w;
+          
+          if(($align eq 'L') && ($td_a = $self->_extract_style_value($td_a, 'text-align'))) {
+                   $td_a =~ /^(\w)\w+/; 
+                   $align = uc($1);
+          }
 
-           if($back_color || $td_width) {
+           if($back_color || $td_width || $align) {
                $td_backcolor = " #$align" . $back_color . $td_width . '# ';
            }
        }
@@ -727,7 +743,7 @@ sub _dwimage_markup {
   my ($self, $src, $align) = @_;
   if($src !~ /^http:/) {
       $src =~ s/\//:/g;   
-      if($src !~ /:/) {
+      if($src !~ /^:/) {
          $src = ":$src";
       }
   }
@@ -745,6 +761,10 @@ sub _dwimage_markup {
        return "<align $align>\n{{$src}}\n</align>";
       }
 
+     if($align =~ /bottom|baseline/) {
+       return "<align $align>\n{{$src}}\n</align>";
+      }
+    
    return "{{$src}}   ";
 }
 
@@ -790,7 +810,7 @@ sub _image {
    }
 
 
-   if($src !~ /userfiles\/image/) {
+   if($src !~ /userfiles\/image/  && $src !~ /\/data\/media/) {
          my @elems = split /=/, $src;
          $src = pop @elems;
          return $self->_dwimage_markup($src,$alignment) if($src !~ /^http:/);
@@ -799,6 +819,10 @@ sub _image {
 
 
    if($src =~ s/^(.*?)\/userfiles\/image\///) {
+         return $self->_dwimage_markup($src,$alignment);
+   }
+
+   if($src =~ s/^(.*?)\/data\/media\///) {
          return $self->_dwimage_markup($src,$alignment);
    }
 
@@ -827,6 +851,11 @@ sub _image {
 
 sub _image_alignment {
   my ($self, $node) = @_;
+  my $align = $node->attr('align') || "";
+  if($align) {
+     $align = 'center' if $align eq 'middle';
+     return $align;  
+  }
   if($node->parent) {
     my $p = $node->parent;
     my %atts = $p->all_external_attr();
@@ -840,6 +869,10 @@ sub _image_alignment {
            elsif($atts{$at} =~ /text-align:\s+(\w+)/) {
                  return $1;
            }
+           elsif($atts{$at} =~ /bottom|base/) {
+                 return 'bottom';
+           }
+
         }
      } 
   }

@@ -1,4 +1,6 @@
-rev 09-Oct_08-07_09
+rev 09-Nov_16-09_00
+
+rev 09-Nov_09-19_19
 
 Revision history for Perl extension HTML::WikiConverter::DokuWikiFCK.
 
@@ -353,4 +355,70 @@ fixed security hole in media and link tools
  Fixed regex bug in DokuWikiFCK.pm which prevented tables with both table header and 
  table alignment from implementing alignment code,  in _table() function. Change:
          @cols = $row=~/[\|]/    to     @cols = $row=~/[\|\^]/
+ 
+07 Nov 2009
+ Added bug fix in save.php and one place in edit.php for checking whether $INFO['userinfo] 
+ isset before accessing $INFO['userinfo']['grps'].  Otherwise caused PHP warning
+ in open wiki's, where there is no 'userinfo' array.
+
+ Back to the drawing board on 04 Oct 2009 for both tables and code blocks.  Made changes to
+ syntax/code.php and syntax/indent.php which properly converts the DowkuWikiFCK markup to HTML
+ and edit.php's javascript repl_cb() handles any FCKeditor issues with the HTML for inserting into
+ editor area.
+ 
+ 
+09 Nov 2009
+ Worked out image alignment.  Added baseline class to fck_editorarea.css and revised
+ baseline attribute output in fck_image.js and baseline option in fck_image.html.
+ When baseline is selected from fack_image.html option list, the images below the
+ image stack under it instead of positioning to its right.  The baseline class
+ also serves the purpose in the editor of removing the influence of the
+ img.mediacenter class, which would hang ohn even after the class was changed to
+ 'media'.
+ 
+ Updated DokuWikiFCK to handle new alignment protocol. Added prepended colon to
+ names of all images--only images in top-level directory had been preded by colon.
+
+10 Nov 2009
+ Updated fck_editor.css to match with DW's design.css and to work in conjunction
+ with the image alignmment facilility of the Image Browser.  Adde help screen
+ to Image Browser and updated fck_image.js to output correct css classes
+ to images.
+ 
+12 Nov 2009
+  Added support to table cells for justification toolbar items: left, center, right,
+  instead of users having to use the table alignment tools, i,e the toolbar pop-up
+  or the right click cell properties menu.
+  
+13 Nov 2009
+  Updated conversion tool both stand-alone and in edit.php to handle table alignment headers
+
+14 Nov 2009
+   Implemented new protocol for connecting image and file browsers to data/media; this
+   autodetects OS and should work on either Windows or Unix-based systems. This is
+   implemented in the config.php file found in fckeditor/editor/filemanagers/connectors/php
+   
+   Added a Configuration option to enable Windows type connector to be used in Unix systems,
+   in the event that the default connector doesn't work.  
+
+15 Nov 2009
+  Added Support for back-slashes.  They have to be escaped using either italic or
+  bold.  In DokuWiki.pm _formats, they are replaced by fckgBACKSLASH. In code blocks
+  these are replaced by back-slashes in edit.php repl_cb() and otherwise in 
+  syntax/indent.php
+  
+  Implemented Editor Window re-sizing by subsituting out own size_ctrl div for DW's
+  
+  Improved back-slash handling by returning all backslashes from DokuWikiFCK.pm _format,
+  each with it own <em> tag to escape it individually. 
+  
+  Added smb icon to fckeditor images and smb css to fck_editorarea.css
+  
+  Added tooltip to smaller and larger buttson for Editor window re-sizing
+  
+  
+ 16 Nov
+ 8:36  Removed autogrow plugin from FCKeditor, now that edit window is resizable.  This
+ also improves functioning of fit window tool, which no longer collapses to the
+ autogrow maximum height.
  
