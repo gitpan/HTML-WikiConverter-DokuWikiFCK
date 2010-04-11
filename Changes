@@ -1,4 +1,4 @@
-rev 09-Nov_16-09_00
+rev 10-Feb_09-12_16
 
 rev 09-Nov_09-19_19
 
@@ -421,4 +421,39 @@ fixed security hole in media and link tools
  8:36  Removed autogrow plugin from FCKeditor, now that edit window is resizable.  This
  also improves functioning of fit window tool, which no longer collapses to the
  autogrow maximum height.
+  
+ 1 Dec
+  Removed Save buttons from DW editor when switching between FCKeditor and DW, to prevent
+  corrupting of text on a Save.  Now it is necessary to exit from DE editor and go back
+  in before being able to Edit and Save.
  
+ 11 Dec
+  Brought fck_convert (edit.php) and conversion script (extra/fckg_convert.php) into
+  line with current DWFCK syntax and sought to fix any outstanding anomalies.
+  
+ Disabled DW Edit button and its checkboxes when a section edit is in progess.  This is
+ a more secure fix for 1 Dec fix and prevents corruption of text which sometimes when
+ moving between FCK editor and DW editor, because Save is automatic when fck conversion
+ is selected. 
+ 
+ 21 Dec
+ Upgraded link tools to give fie borwser listings for both internal links and
+ non-dokuwiki mime types in data/media and brought DokuWikiFCK.pm into line
+ with those changes so that it handles other mime types correctly (in _link).
+ 
+ Fixed bug which prevented users from saving when in section edit, caused by changes on 
+ 11 Dec
+ 
+ 22 Dec
+ Fixed problem with url formats, where format syntax appeared on page instead of actually
+ being used as formatting characters.  This was result of having changed method of
+ handling formatting characters in earlier update.
+ 
+ 12 Jan 2010
+ Fixed bug in commands.php FileUpload which lower-cased only image files
+
+ 22 January
+ Integrated DokuWikiFCK with fckgLite's FCKeditor and adapted to DokuWikiFCK the
+ fckgLite handling of plugin syntax, i.e. it is now built in and doesn't need the
+ plugin tool for escaping plugin syntax.
+  

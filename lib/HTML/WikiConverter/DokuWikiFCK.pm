@@ -21,7 +21,7 @@ use  HTML::Entities;
 use Params::Validate ':types';
 
 
-our $VERSION = '0.31.1';
+our $VERSION = '0.32';
 
   my $SPACEBAR_NUDGING = 0;
   my  $color_pattern = qr/
@@ -885,7 +885,7 @@ sub format_InternalLink {
   my($self, $node, $file) = @_; 
 
     my $inner_text = $self->get_elem_contents($node) || "";        
-   
+    $file = ":$file" if $file !~/^:/;
     if($inner_text) {
        return "$file|$inner_text";
     }
@@ -929,11 +929,20 @@ sub _link {
         $internal_link = "[[$format]]";
     } 
     elsif($url !~ /^\W*http:/ &&   $url =~ /\/(doku\.php\?id=)?:?(\w+\#[\-\.\w]+)$/) {
+
         my $format = $self->format_InternalLink($node,$2);
         $node->attr('href', $format);
         $internal_link = "[[$format]]";
 
     }
+
+    elsif($url !~ /^\W*http:/ &&   $url =~ /\/(doku\.php\?id=)?:(.*?)\.(.*)/ && $3 !~/gif|png|txt|jpg|jpeg/) {
+
+        my $format = $self->format_InternalLink($node,"$2.$3");
+        $node->attr('href', $format);
+        $internal_link = "{{$format}}";
+    }
+
     elsif ($url =~ /^mailto:(.*)(\?.*)?/) {
         return "<" . $1 . ">";
     } 
@@ -992,11 +1001,12 @@ sub _link {
     if($text =~ /^\s*[\\]{2}s*/) { return ""; }    
     
     my $emphasis = "";
-    if($text =~ /([\*\/_\"])\1/) {
-        $emphasis = "$1$1";
+   
+    if($text =~ /(_<\w_>)/) {
+        $emphasis = "$1";
     }
-    $emphasis = ""  if $emphasis =~ /$_format_regex{'i'}/;
-
+  #    $emphasis = ""  if $emphasis =~ /$_format_regex{'i'}/;
+  
     if($text =~ /^(<.*?\w>).*?(<\/.*?>)$/) {
         my $start = $1;
         my $end = $2;
@@ -1016,8 +1026,7 @@ sub _link {
         $output = "$start${emphasis}${output}${emphasis}$end";  
     }
     elsif($emphasis) {
-        my $pat =~ s/(\W)/\\$1/g;
-        $output =~ s/$pat//g;
+        $output =~ s/${emphasis}//g;
         $output = "${emphasis}${output}${emphasis}";
     }
 
