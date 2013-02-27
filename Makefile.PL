@@ -42,16 +42,16 @@ sub openMsg {
 my $HOME = $ENV{'HOME'};
 print qq(\n------------------
   I need the (absolute) pathname to your DokuWiki plugins directory,
-  in order to install the fckg plugin. For instance:
+  in order to install the dwfckg plugin. For instance:
            /var/www/html/dokuwiki/lib/plugins
   If you don't know it or want to install it later, just press return. 
 
-  You can always install the fckg plugin later. If you
+  You can always install the dwfckg plugin later. If you
   are installing from the CPAN shell (perl -MCPAN -e shell),
-  you should find fckg.tgz in your home directory at
-        $HOME/.cpan/DokuWikiFCK_<version>/fckg.
+  you should find dwfckg.tgz in your home directory at
+        $HOME/.cpan/DokuWikiFCK_<version>/dwfckg.
   If you are installing from the perl distribution,
-  you will find it in the current directory under fckg/. 
+  you will find it in the current directory under dwfckg/. 
   If you have any questions, see the README file.
 
 \n----------\n
@@ -66,24 +66,24 @@ END {
 
 my $pwd = cwd();
 
-my $dwplugins =  getDWPluginsDir('fckg.tgz',0);
+my $dwplugins =  getDWPluginsDir('dwfckg.tgz',0);
 
 if($dwplugins) {
-  my @args = ("cp", "fckg/fckg.tgz", $dwplugins);
+  my @args = ("cp", "dwfckg/dwfckg.tgz", $dwplugins);
   if(system(@args) == 0) {
-     print "copied fckg/fckg.tgz to $dwplugins\n";
+     print "copied dwfckg/dwfckg.tgz to $dwplugins\n";
      print "Installing editor\n";
      chdir($dwplugins);
-     if( -d "fckg") {
-       my @args = ("mv", "fckg", "fckg.$$");   
+     if( -d "dwfckg") {
+       my @args = ("mv", "dwfckg", "dwfckg.$$");   
        if(system(@args) == 0) {
-         my $n = chmod(0000, "fckg.$$");
-         print "renamed old fckg to fckg.$$ and changed permisssion to 0000\n" if($n); 
+         my $n = chmod(0000, "dwfckg.$$");
+         print "renamed old dwfckg to dwfckg.$$ and changed permisssion to 0000\n" if($n); 
        }
 
      }
 
-     my @args = ("tar", "-xzf", "fckg.tgz");
+     my @args = ("tar", "-xzf", "dwfckg.tgz");
 
      if(system(@args) == 0) {
          print "Install successful\n";

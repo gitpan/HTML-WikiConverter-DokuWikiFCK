@@ -104,8 +104,8 @@ sub new {
 sub getFH {
   my($self) =  @_;
   local *FH; 
-  #  if(open(FH, '>> C:\\Windows\\Temp\\fckg.log')) { 
-  if(open(FH, ">> /var/tmp/fckg.log")) {
+  #  if(open(FH, '>> C:\\Windows\\Temp\\dwfckg.log')) { 
+  if(open(FH, ">> /var/tmp/dwfckg.log")) {
      return *FH;
   }
   $self->{'err'} = "$! \n";
@@ -148,7 +148,7 @@ sub rules {
   else {  
     $rules->{ 'indent' } = { preserve => 1  };
   }
-  $rules->{ 'fckg' } = { preserve => 1  };
+  $rules->{ 'dwfckg' } = { preserve => 1  };
   $rules->{ 'header' } = { preserve => 1  };  
   $rules->{ 'td' } = { replace => \&_td_start };
   $rules->{ 'th' } = { alias => 'td' };
@@ -183,7 +183,7 @@ sub _formats {
     my @count = $text =~ /\\/g;
     if(scalar @count) {
       my $count = scalar @count;
-      $text =  "_<em_>fckgBACKSLASH_<em_>" x $count;
+      $text =  "_<em_>dwfckgBACKSLASH_<em_>" x $count;
       return $text;
     }
     $text =~ s/^$_format_regex{$node->tag}//;
@@ -234,7 +234,7 @@ sub _td_start {
     $text =~ s/\<br\>\s*$//m;     # for Word tables pasted into editor
     $text =~ s/\<br\>\s*/<br \/>/gm;
     $text =~ s/\\\\/<br \/>/gm;   # see _p_alignment() comment
-    $text =~ s/&lt;/fckgTableOpenBRACKET/gm;
+    $text =~ s/&lt;/dwfckgTableOpenBRACKET/gm;
     $self->{'colspan'} = "";
     my $prefix = $self->SUPER::_td_start($node, $rules);
 
@@ -561,9 +561,9 @@ sub _code_types {
     $text =~ s/\n/$NL_marker\n/gms;
 
   
-    $text =~ s/&lt;/fckgOpenPAREN/gms;       # substitution for open angle bracket
-    $text =~ s/\/\*/fckgOpen_C_COMMENT/gms;   
-    $text =~ s/\*\//fckgClosed_C_COMMENT/gms;   
+    $text =~ s/&lt;/dwfckgOpenPAREN/gms;       # substitution for open angle bracket
+    $text =~ s/\/\*/dwfckgOpen_C_COMMENT/gms;   
+    $text =~ s/\*\//dwfckgClosed_C_COMMENT/gms;   
  
     $text = $self->replace_formats($text);
 
@@ -1161,7 +1161,7 @@ sub _block {
            $$outref=~s/__(\/\/[\[\{])/$1/gsm;        # remove underlining markup
            $$outref=~s/([\}\]]\/\/)__/$1/gsm;        #   ditto
     
-           $$outref =~ s/<fckg><\/fckg>//gms;
+           $$outref =~ s/<dwfckg><\/dwfckg>//gms;
 
            $$outref =~ s/\^<align 0px><\/align>//g;           # remove aligns at top of file
            $$outref =~ s/[\s\n]*<align>[\s\n]*<\/align>[\s\n]*//gsm;      # remove empty aligns
@@ -1232,8 +1232,8 @@ sub _block {
        $$outref =~ s/<\/block>/<\/block><align left><\/align>/gm if $self->{'block'};         
        $$outref .= "\n" unless $$outref =~ /\n\n$/m;
        
-       if($$outref !~ /<align|<fckg.*?fckg>/gms) {
-           $$outref = '<fckg></fckg>' . $$outref;
+       if($$outref !~ /<align|<dwfckg.*?dwfckg>/gms) {
+           $$outref = '<dwfckg></dwfckg>' . $$outref;
        }
       
      

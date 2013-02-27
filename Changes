@@ -456,4 +456,6 @@ fixed security hole in media and link tools
  Integrated DokuWikiFCK with fckgLite's FCKeditor and adapted to DokuWikiFCK the
  fckgLite handling of plugin syntax, i.e. it is now built in and doesn't need the
  plugin tool for escaping plugin syntax.
-  
+
+Feb 26 2013  
+fckg converted to dwfckg

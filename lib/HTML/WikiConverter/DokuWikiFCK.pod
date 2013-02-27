@@ -7,7 +7,7 @@ HTML::WikiConverter::DokuWikiFCK - A WikiConverter Dialect supporting the FCKedi
 
 =head1 SYNOPSIS
 
-DokuWikiFCK is not designed to be used independently of DokuWiki and the fckg plugin, of
+DokuWikiFCK is not designed to be used independently of DokuWiki and the dwfckg plugin, of
 which it is a part.  It sits between the FCKeditor and DokuWiki and converts the HTML
 created by the FCKeditor into an extended DokuWiki markup.
 
@@ -45,7 +45,7 @@ time and moving them backward with the delete key.
     perl -MCPAN -e 'install HTML::WikiConverter::DokuWikiFCK'
     
     This will install all of the Perl dependencies you need as well as
-    the fckg DokuWiki plugin. 
+    the dwfckg DokuWiki plugin. 
    
 
     This method makes sense for a first-time install.
